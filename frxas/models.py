@@ -20,7 +20,7 @@ def dataset_fun(params, i, x, fun):
     np.ndarray
         Values from evaluating the callable function with the given data set
         parameters and independent variable array/
-    """
+"""
 
     args = []
     for pname in params:
@@ -49,7 +49,7 @@ def objective_fun(params, x, data, fun):
     -------
     np.ndarray
         1-D array of residuals for the given model function.
-    """
+"""
 
     ndata = np.shape(data)[0]
     resid = 0.0*data[:]
@@ -65,7 +65,8 @@ def objective_fun(params, x, data, fun):
     resid_c = np.array(resid_c)
     return np.concatenate(resid_c).ravel()
 
-def chi_ideal(x, ld, tg, f):
+
+def chi_ideal(x, ld, tg, Ao, f):
     """Function for dimensionless vacancy concentrations assuming ideal
     behavior and overpotential control.
 
@@ -80,6 +81,8 @@ def chi_ideal(x, ld, tg, f):
         Characteristic time scale of vacancy profile. Reflects time scale of
         switch from kinetic limitations (low frequency) to co-limitation by
         kinetics and diffusion (moderate to high frequency).
+    Ao : float
+        Thermodynamic factor.
     f : float
         Applied linear frequency in units of Hz.
 
@@ -92,5 +95,11 @@ def chi_ideal(x, ld, tg, f):
     -----
     This solution assumes:
         1. Thermodynamic factor is constant: :math:`A \approx A_o`
-        2. 
-    """
+        2. Experiment is conducted with a controlled overpotential
+        3.
+  
+    Reference
+    ---------
+    Lu et al....
+"""
+    return -1 / Ao * np.exp(-x / ld * np.sqrt(1 + 1j * tg * 2 * np.pi * f))
