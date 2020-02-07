@@ -2,7 +2,7 @@ import numpy as np
 
 
 def dataset_fun(params, i, x, fun):
-    """Calculate a function's lineshape from parameters for a single data set.
+    r"""Calculate a function's lineshape from parameters for a single data set.
 
     Parameters
     ----------
@@ -12,16 +12,15 @@ def dataset_fun(params, i, x, fun):
         Index of the data set being evauluated.
     x : np.ndarray
         Array of independent variable values.
-    fun: callable
-        Function to be evaluated following the form fun(x, *args)
+    fun : callable
+        Function to be evaluated following the form fun(x, \*args)
 
     Returns
     -------
     np.ndarray
         Values from evaluating the callable function with the given data set
-        parameters and independent variable array/
-"""
-
+        parameters and independent variable array.
+    """
     args = []
     for pname in params:
         # find all parameters with suffix for current index
@@ -32,7 +31,7 @@ def dataset_fun(params, i, x, fun):
 
 
 def objective_fun(params, x, data, fun):
-    """Calculate a residuals array for a given model function
+    r"""Calculate a residuals array for a given model function
 
     Parameters
     ----------
@@ -42,15 +41,14 @@ def objective_fun(params, x, data, fun):
         Array or list of arrays of independent variable values.
     data : list or np.ndarray
         Array or list of arrays of data sets to be fit.
-    fun: callable
-        Function to be evaluated following the form fun(x, *args).
+    fun : callable
+        Function to be evaluated following the form fun(x, \*args).
 
     Returns
     -------
     np.ndarray
         1-D array of residuals for the given model function.
-"""
-
+    """
     ndata = np.shape(data)[0]
     resid = 0.0*data[:]
 
@@ -67,22 +65,24 @@ def objective_fun(params, x, data, fun):
 
 
 def chi_ideal(x, ld, tg, Ao, f):
-    """Function for dimensionless vacancy concentrations assuming ideal
-    behavior and overpotential control.
+    r"""Summarize the function in one line.
+
+    Function for dimensionless vacancy concentrations assuming ideal behavior
+    and overpotential control.
 
     Parameters
     ----------
     x : list or np.ndarray
         Array or list of arrays of length values.
     ld : float
-        Characteristic length scale of vacancy profile, often called the
-        "utilization length".
+        :math:`l_{\delta}` : Characteristic length scale of vacancy profile, often
+        called the "utilization length".
     tg : float
-        Characteristic time scale of vacancy profile. Reflects time scale of
-        switch from kinetic limitations (low frequency) to co-limitation by
-        kinetics and diffusion (moderate to high frequency).
+        :math:`t_G`  : Characteristic time scale of vacancy profile. Reflects
+        time scale of switching from kinetic limitations (low frequency) to
+        co-limitation by kinetics and diffusion (moderate to high frequency).
     Ao : float
-        Thermodynamic factor.
+        :math:`A_o` : Thermodynamic factor. 
     f : float
         Applied linear frequency in units of Hz.
 
@@ -93,13 +93,26 @@ def chi_ideal(x, ld, tg, Ao, f):
 
     Notes
     -----
-    This solution assumes:
-        1. Thermodynamic factor is constant: :math:`A \approx A_o`
-        2. Experiment is conducted with a controlled overpotential
-        3.
-  
-    Reference
-    ---------
-    Lu et al....
-"""
+    .. math::
+
+        \chi = \frac{-e^{-\frac{x}{l_{\delta}}\sqrt{1 + j 2 \pi f t_G}}}{A_o}
+
+    Based on [1]_ this solution assumes :
+        1. Only bulk diffusion is considered. :math:`O_2` reduction occurs at
+           electrode/gas interface.
+        2. Thermodynamic factor is constant: A :math:`\approx A_o`
+        3. Experiment is conducted with a controlled overpotential
+
+    References
+    ----------
+
+    .. [1] Y. Lu, C. Kreller, and S.B. Adler,
+        Journal of The Electrochemical Society, 156, B513-B525 (2009)
+        `doi:10.1149/1.3079337 <https://doi.org/10.1149/1.3079337>`_.
+    """
+    # After closing class docstring, there should be one blank line to
+    # separate following codes (according to PEP257).
+    # But for function, method and module, there should be no blank lines
+    # after closing the docstring.
+
     return -1 / Ao * np.exp(-x / ld * np.sqrt(1 + 1j * tg * 2 * np.pi * f))
