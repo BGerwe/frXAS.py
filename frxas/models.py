@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.special import lambertw
 
 
 def dataset_fun(params, i, x, fun):
@@ -62,6 +63,49 @@ def objective_fun(params, x, data, fun):
     # change to array so residuals can be flattened as needed by minimize
     resid_c = np.array(resid_c)
     return np.concatenate(resid_c).ravel()
+
+
+def calc_Ao(aoo, po2, po2_ref):
+    r"""Calculates an adjusted thermodynamic factor `ao`.
+    
+    Parameters
+    ----------
+    aoo : float
+        Thermodynamic factor for a reference pO2, `po2_ref`
+    po2 : float
+        Experimental :math:`pO_2` condition added in units % :math:`O_2`.
+    po2_ref : float
+        Reference :math:`pO_2` condition added in units % :math:`O_2`.
+        
+    Returns
+    -------
+    ao : float
+        Thermodynamic factor adjusted to `po2`.
+    
+    Notes
+    -----
+    
+    This relies on knowing a reference therm. factor, `aoo`, at a reference
+    pO2, `po2_ref`, and adjusts it for a given experimental pO2.
+    
+    The adjustment is made as:
+    
+    .. math::
+    
+        A_o = 1 + W( \frac{A_{oo} - 1 * e^{A_{oo} - 1}}{\sqrt{\frac{pO_2}{pO_{2,ref}}}})
+    
+    Where W is the lambert W function [1]_.
+    
+    References
+    ----------
+    .. [1] https://en.wikipedia.org/wiki/Lambert_W_function
+    
+    """
+    ao = 1 + lambertw((aoo - 1) * np.exp(aoo - 1) / np.sqrt(po2 / po2_ref))
+    
+    # lambertw() returns a complex number, but it should be purely real for any
+    # reasonable scenarios
+    return ao.real
 
 
 def chi_ideal(x, ld, tg, Ao, f):

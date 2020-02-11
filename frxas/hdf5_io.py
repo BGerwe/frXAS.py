@@ -2,14 +2,14 @@ import numpy as np
 import h5py
 
 
-def create_hdf5_file(filename: str, po2s: list, temp=700):
+def create_hdf5_file(filename: str, gases: list, temp=700):
     r""" Makes an HDF5 file to store data.
 
     Parameters
     ----------
     filename : str
         File path name excluding ".h5" extension.
-    po2s : list
+    gases : list
         List of strings or floats indicating experimental `pO_2` conditions in
         units % `O_2` for data sets being stored .
     temp : int or float
@@ -27,10 +27,10 @@ def create_hdf5_file(filename: str, po2s: list, temp=700):
         return
 
     try:
-        for po2 in po2s:
-            f.create_group(str(po2) + "%_O2")
+        for gas in gases:
+            f.create_group(str(gas))
     except TypeError:
-        print("pO2 conditions not added successfully. Check type in po2s")
+        print("Gas conditions not added successfully. Check type in gases")
         f.close()
         return
 
@@ -92,17 +92,16 @@ def close_frxas_file(filename: str):
     return
 
 
-def add_frxas_profile(file, po2, frequency, data):
-    r"""Adds data for a single po2 and frequency experiment to existing file.
+def add_frxas_profile(file, gas, frequency, data):
+    r"""Adds data for a single gas and frequency experiment to existing file.
 
     Parameters
     ----------
     file : :class:`~h5py.File` or str
         Class representing an HDF5 file. If `file` is a string, it will attempt
         to open an HDF5 file with that name.
-    po2 : str or int
-        Experimental `pO_2` condition for data seta being added in units
-        % `O_2`.
+    gas : str or int
+        Experimental gas condition for data seta being added e.g. `10%_O2`.
     frequency : str or int
         Frequency of experimentally applied voltage perturbation for data seta
         being added.
@@ -111,32 +110,35 @@ def add_frxas_profile(file, po2, frequency, data):
 
     Notes
     -----
-    The structure of the data files is:
+    The structure of the data files is
+
+    ::
+
         file
-        |--- pO2 1
+        |--- gas 1
         |   |--- frequency 1
         |   |--- frequency 2
         |   ...
         |   |--- frequency n
-        |--- pO2 2
+        |--- gas 2
         |   |--- frequency 1
         |   ...
         ...
-        |---pO2 n
+        |--- gas n
         |   |--- frequency 1
         |   ...
 
     Use :print_data_shapes: to retrieve existing structure in HDF5 file.
-    
+
     The data is assumed to be organized where the first row is positions,
     the second row is real components of the X-ray signal, and the third row
     is imaginary components of the X-ray signal.
     """
     f = file
-    group = str(po2) + '%_O2'
+    group = str(gas)
     # frequency is used both to find existing data and to label new data
     dset = str(frequency) + '_Hz'
-    
+
     try:
         f.keys()
 
@@ -153,7 +155,9 @@ def add_frxas_profile(file, po2, frequency, data):
 
         # Not really necessary, but adding exp. conditions as attributes
         f[group][dset].attrs['Frequency'] = frequency
-        f[group][dset].attrs['pO2'] = po2
+        print(float(gas.split('%')[0]) / 100)
+        f[group][dset].attrs['Gas'] = float(gas.split('%')[0]) / 100
+        f[group].attrs['Gas'] = float(gas.split('%')[0]) / 100
 
     except (KeyError, TypeError):
         print('Data entry unsuccessful')
@@ -187,8 +191,8 @@ def print_data_shapes(file):
     return
 
 
-def get_po2_Cond(file):
-    r"""Prints the name of all pO2 conditions HDF5 file.
+def get_gas_condition(file):
+    r"""Retrieves the gas conditions of all HDF5 file.
 
     Parameters
     ----------
@@ -207,7 +211,7 @@ def get_po2_Cond(file):
 
     for group in f.keys():
         name = str(group).split("'")
-        
+
         # This was in my original code, but it doesn't seem useful
         # TODO: check if this is necessary
         # g = name[0].split('%')
@@ -218,42 +222,81 @@ def get_po2_Cond(file):
     return gas
 
 
-def extr_adj_1po2(obj, starts=None):
-    """Placeholder
-"""
-    gas = obj.attrs['Gas']
-    adj_starts = True
-    i = 0
+def adjust_dataset(data, start_index):
+    """Truncates data sets to begin at `start_index` and makes the position
+    values relative to the `start_index` position.
 
-    if starts is None:
-        starts = []
-        adj_starts = False
+    Parameters
+    ----------
+    data : np.ndarray
+        Array, usually of shape 3 x n, of fr-XAS profile data.
+    start_index : int
+        Index that data should be truncated to begin at, e.g. data point for
+        the edge of the electrode gate in patterned SOFC samples.
+
+    Returns
+    -------
+    np.ndarray
+        Array of data truncated to start_index, has shape m x (x - start_index)
+    """
+    rows, cols = data.shape
+    data_adj = np.zeros((rows, cols-start_index))
+    data_adj[:rows, :] = data[:, start_index:].copy()
+    data_adj[0, :] = data_adj[0, :] - data_adj[0, 0]
+
+    return data_adj
+
+
+def get_group_datasets(obj, start_indices=[]):
+    """Retrieves all datasets stored in one gas group.
+
+    Parameters
+    ----------
+    obj : :class:`~h5py.File` group reference
+        Reference to a group of an HDF5 file, e.g. file['1%_O2'].
+    start_indices : list of ints
+        List of indices where the fr-XAS profile should begin
+
+    Returns
+    -------
+    dict
+        Dictionary of data stored in an HDF5 group, including metadata such as
+        specified gas condition, and frequencies applied for each dataset.
+    """
+    gas = obj.attrs['Gas']
+    starts = start_indices
+
+    if start_indices:
+        # starts = start_indices
+        start_adj = True
+    else:
+        # starts = []
+        start_adj = False
 
     frequencies = []
     data = []
     data_adj = []
-    for group in obj.keys():
-        frequency = obj[group].attrs['frequency']
 
-        if adj_starts:
+    # Cycling through each data set stored in the HDF5 file.
+    for i, dset in enumerate(obj.keys()):
+        frequency = obj[dset].attrs['Frequency']
+    # Start indices are used in passed to the function or previously stored
+    # with each data set. Otherwise, assume starting at beginning. Makes new
+    # array to store truncated data set.
+        if start_adj:
             start = starts[i]
-            dat = np.array(obj[group])
-            rows = dat.shape[0]
-            cols = dat.shape[1]
-            dat_adj = np.zeros((rows+1, cols-start+1))
-            dat_adj[:rows, :] = dat[:, start-1:].copy()
-            dat_adj[0, :] = dat_adj[0, :] - dat_adj[0, 0]
-            dat_adj[3, :] = np.sqrt(dat_adj[1, :]**2 + dat_adj[2, :]**2)
-            i += 1
+            obj[dset].attrs['Start_Index'] = start
+            dat = np.array(obj[dset])
+            dat_adj = adjust_dataset(dat, start)
+
         else:
-            start = obj[group].attrs['start']
-            dat = np.array(obj[group])
-            rows = dat.shape[0]
-            cols = dat.shape[1]
-            dat_adj = np.zeros((rows+1, cols-start+1))
-            dat_adj[:rows, :] = dat[:, start-1:].copy()
-            dat_adj[0, :] = dat_adj[0, :] - dat_adj[0, 0]
-            dat_adj[3, :] = np.sqrt(dat_adj[1, :]**2 + dat_adj[2, :]**2)
+            try:
+                start = obj[dset].attrs['Start_Index']
+            except KeyError:
+                start = 0
+
+            dat = np.array(obj[dset])
+            dat_adj = adjust_dataset(dat, start)
             starts.append(start)
 
         frequencies.append(frequency)
@@ -263,7 +306,43 @@ def extr_adj_1po2(obj, starts=None):
     return dict([('gas', gas), ('frequencies', frequencies),
                  ('starts', starts), ('data', data), ('data_adj', data_adj)])
 
-def adjust_dataset():
+
+def get_all_datasets(file, start_indices=[]):
+    """Retrieves all datasets stored in an HDF5 file.
+
+    Parameters
+    ----------
+    file : :class:`~h5py.File` or str
+        Class representing an HDF5 file. If `file` is a string, it will attempt
+        to open an HDF5 file with that name.
+    start_indices : list of lists
+        Should have one entry of integer type for each dataset stored in HDF5.
+
+    Returns
+    -------
+    list
+        List of dicts corresponding to each group in the HDF5 `file`.
+
+    See Also
+    --------
+    print_data_shapes : Displays structure of data in an HDF5 file.
+    get_group_datasets : Retrieves data in a single group in an HDF5 file.
     """
-    """
-    return
+    f = file
+    try:
+        f.keys()
+
+    except AttributeError:
+        f = open_frxas_file(file)
+
+    data = []
+
+    for i, group in enumerate(f.keys()):
+        if f[group].keys() and len(start_indices) > 0:
+            data.append(get_group_datasets(f[group]), start_indices[i])
+        elif f[group].keys() and len(start_indices) == 0:
+            data.append(get_group_datasets(f[group]))
+        else:
+            print(f[group], ' is empty.')
+
+    return data
