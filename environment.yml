@@ -1,4 +1,4 @@
-name: test_env
+name: frxas
 channels:
   - GSECARS
   - defaults
