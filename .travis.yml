@@ -29,7 +29,7 @@ services:
 
 # list of commands to run to setup the environment
 install:
-    - conda env create -q -n test-environment python=$TRAVIS_PYTHON_VERSION --file environment.yml
+    - conda env create -q -n test-environment python=$TRAVIS_PYTHON_VERSION --file environment2.yml
     - source activate test-environment
     - conda install --yes coverage coveralls flake8
     # - pip install -r requirements.txt
