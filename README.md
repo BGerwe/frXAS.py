@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/BGerwe/frXAS.py.svg?branch=master)](https://travis-ci.org/BGerwe/frXAS.py)
+[![Coverage Status](https://coveralls.io/repos/github/BGerwe/frXAS.py/badge.svg?branch=master)](https://coveralls.io/github/BGerwe/frXAS.py?branch=master)
+
 # frXAS.py
 A package to process, analyze, and interpret data from frequency-resolved X-ray absorption spectroscopy measurements.
 
