@@ -86,7 +86,11 @@ def test_calc_resid():
                  -0.03102214, -0.00866793, -0.02826127, -0.01045664,
                  -0.02548134, -0.01187176, -0.02272435])
 
+    # Testing for complex number inputs
     assert np.isclose(models.calc_resid(data, model), correct).all()
+    # Testing for real number inputs
+    assert np.isclose(models.calc_resid(data.real, model.real),
+                      correct[::2]).all()
 
 
 def test_objective_fun():

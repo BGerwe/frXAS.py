@@ -12,7 +12,7 @@ setuptools.setup(
                 X-ray absorption spectroscopy measurements.",
     long_description=long_description,
     long_description_content_type= "text/markdown",
-    url="https://github.com/BGerwe/frxas.py",
+    url="https://frxaspy.readthedocs.io/en/latest/",
     packages=setuptools.find_packages(),
     install_requires=['matplotlib>=3.0', 'numpy>=1.14', 'scipy>=1.0'],
     classifiers=[
