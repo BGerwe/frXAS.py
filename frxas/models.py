@@ -27,8 +27,20 @@ def dataset_fun(params, i, x, fun):
         # find all parameters with suffix for current index
         if pname.endswith(str(i+1)):
             args.append(params[pname])
-
+    # print(args, i)
     return fun(x, *args)
+
+
+def calc_resid(data, model):
+    resid_c = []
+    resid = data - model
+
+    if resid.dtype == np.complex:
+        resid_c = resid.ravel().view(np.float)
+    else:
+        resid_c = resid
+
+    return resid_c
 
 
 def objective_fun(params, x, data, fun):
@@ -50,22 +62,29 @@ def objective_fun(params, x, data, fun):
     np.ndarray
         1-D array of residuals for the given model function.
     """
-    ndata = np.shape(data)[0]
-    resid = 0.0*data[:]
+    resid = []
 
-    resid_c = []
-    # make residual per data set
-    for i in range(ndata):
-        resid[i] = data[i] - dataset_fun(params, i, x[i], fun)
-        if resid[i].dtype == np.complex:
-            # convert to floats as required by minimize()
-            resid_c.append(resid[i].ravel().view(np.float))
+    if np.shape(data[0]) == ():
+        # If only one data set passed in
+        resid.append(calc_resid(data, dataset_fun(params, 0, x, fun)))
+    else:
+        # If multiple data sets passed
+        ndata = np.shape(data)[0]
+
+        # make residual per data set
+        for i in range(ndata):
+
+            if data[i].dtype == np.complex:
+                # convert to floats as required by minimize()
+                resid.append(calc_resid(data[i],
+                             dataset_fun(params, i, x[i], fun)))
+
     # change to array so residuals can be flattened as needed by minimize
-    resid_c = np.array(resid_c)
-    return np.concatenate(resid_c).ravel()
+    resid = np.array(resid)
+    return np.concatenate(resid).ravel()
 
 
-def calc_Ao(aoo, po2, po2_ref):
+def calc_ao(aoo, po2, po2_ref):
     r"""Calculates an adjusted thermodynamic factor `ao`.
 
     Parameters
@@ -109,7 +128,7 @@ def calc_Ao(aoo, po2, po2_ref):
     return ao.real
 
 
-def chi_ideal(x, ld, tg, Ao, f):
+def chi_ideal(x, ld, tg, ao, f):
     r"""Summarize the function in one line.
 
     Function for dimensionless vacancy concentrations assuming ideal behavior
@@ -126,7 +145,7 @@ def chi_ideal(x, ld, tg, Ao, f):
         :math:`t_G`  : Characteristic time scale of vacancy profile. Reflects
         time scale of switching from kinetic limitations (low frequency) to
         co-limitation by kinetics and diffusion (moderate to high frequency).
-    Ao : float
+    ao : float
         :math:`A_o` : Thermodynamic factor.
     f : float
         Applied linear frequency in units of Hz.
@@ -160,4 +179,4 @@ def chi_ideal(x, ld, tg, Ao, f):
     # But for function, method and module, there should be no blank lines
     # after closing the docstring.
 
-    return -1 / Ao * np.exp(-x / ld * np.sqrt(1 + 1j * tg * 2 * np.pi * f))
+    return -1 / ao * np.exp(-x / ld * np.sqrt(1 + 1j * tg * 2 * np.pi * f))
