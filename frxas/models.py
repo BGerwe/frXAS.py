@@ -180,3 +180,142 @@ def chi_ideal(x, ld, tg, ao, f):
     # after closing the docstring.
 
     return -1 / ao * np.exp(-x / ld * np.sqrt(1 + 1j * tg * 2 * np.pi * f))
+
+
+def chi_amp(x, ld, tg, amp, f):
+    r"""Summarize the function in one line.
+
+    Function for dimensionless vacancy concentrations assuming ideal behavior
+    and overpotential control.
+
+    Parameters
+    ----------
+    x : list or np.ndarray
+        Array or list of arrays of length values.
+    ld : float
+        :math:`l_{\delta}` : Characteristic length scale of vacancy profile,
+        often called the "utilization length".
+    tg : float
+        :math:`t_G`  : Characteristic time scale of vacancy profile. Reflects
+        time scale of switching from kinetic limitations (low frequency) to
+        co-limitation by kinetics and diffusion (moderate to high frequency).
+    amp : float
+        Physically non-specific fitting parameter to capture amplitude
+        variation.
+    f : float
+        Applied linear frequency in units of Hz.
+
+    Returns
+    -------
+    np.ndarray
+        Evaluated function for given length array and parameters.
+
+    Notes
+    -----
+    .. math::
+
+        \chi = \frac{-e^{-\frac{x}{l_{\delta}}\sqrt{1 + j 2 \pi f t_G}}}{A_o}
+
+    Based on [1]_ this solution assumes :
+        1. Only bulk diffusion is considered. :math:`O_2` reduction occurs at
+           electrode/gas interface.
+        2. Thermodynamic factor is constant: A :math:`\approx A_o`
+        3. Experiment is conducted with a controlled overpotential
+
+    References
+    ----------
+
+    .. [1] Y. Lu, C. Kreller, and S.B. Adler,
+        Journal of The Electrochemical Society, 156, B513-B525 (2009)
+        `doi:10.1149/1.3079337 <https://doi.org/10.1149/1.3079337>`_.
+    """
+    # After closing class docstring, there should be one blank line to
+    # separate following codes (according to PEP257).
+    # But for function, method and module, there should be no blank lines
+    # after closing the docstring.
+
+    return amp * np.exp(-x / ld * np.sqrt(1 + 1j * tg * 2 * np.pi * f))
+
+
+def chi_pattern(x, ld, tg, kappa, gamma, aoo, po2, po2_ref, f):
+    r"""Summarize the function in one line.
+
+    Function for dimensionless vacancy concentrations assuming ideal behavior
+    and overpotential control.
+
+    Parameters
+    ----------
+    x : list or np.ndarray
+        Array or list of arrays of length values.
+    ld : float
+        :math:`l_{\delta}` : Characteristic length scale of vacancy profile,
+        often called the "utilization length".
+    tg : float
+        :math:`t_G`  : Characteristic time scale of vacancy profile. Reflects
+        time scale of switching from kinetic limitations (low frequency) to
+        co-limitation by kinetics and diffusion (moderate to high frequency).
+    ao : float
+        :math:`A_o` : Thermodynamic factor.
+    kappa : float
+        Bleh bleah
+    gamma : float
+        Bleh bleah
+    f : float
+        Applied linear frequency in units of Hz.
+
+    Returns
+    -------
+    np.ndarray
+        Evaluated function for given length array and parameters.
+    """
+    k = kappa
+    g = gamma
+
+    ao = calc_ao(aoo, po2, po2_ref)
+
+    chi = -1 / (ao + ao * g * np.sqrt(2 * k + 1j * tg * 2 * np.pi * f)) * \
+        np.exp(-x / ld * np.sqrt(2 * k + 1j * tg * 2 * np.pi * f))
+
+    return chi
+
+
+def chi_pattern_amp(x, amp, ld, tg, kappa, gamma, aoo, po2, po2_ref, f):
+    r"""Summarize the function in one line.
+
+    Function for dimensionless vacancy concentrations assuming ideal behavior
+    and overpotential control.
+
+    Parameters
+    ----------
+    x : list or np.ndarray
+        Array or list of arrays of length values.
+    ld : float
+        :math:`l_{\delta}` : Characteristic length scale of vacancy profile,
+        often called the "utilization length".
+    tg : float
+        :math:`t_G`  : Characteristic time scale of vacancy profile. Reflects
+        time scale of switching from kinetic limitations (low frequency) to
+        co-limitation by kinetics and diffusion (moderate to high frequency).
+    ao : float
+        :math:`A_o` : Thermodynamic factor.
+    kappa : float
+        Bleh bleah
+    gamma : float
+        Bleh bleah
+    f : float
+        Applied linear frequency in units of Hz.
+
+    Returns
+    -------
+    np.ndarray
+        Evaluated function for given length array and parameters.
+    """
+    k = kappa
+    g = gamma
+
+    ao = calc_ao(aoo, po2, po2_ref)
+
+    chi = -amp / (ao + ao * g * np.sqrt(2 * k + 1j * tg * 2 * np.pi * f)) * \
+        np.exp(-x / ld * np.sqrt(2 * k + 1j * tg * 2 * np.pi * f))
+
+    return chi

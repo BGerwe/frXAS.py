@@ -4,34 +4,37 @@ from cycler import cycler
 
 from . import models
 
+
 def plot_chi(axes, x, data, params=None, add_fit=False,
-                 model=None, x_units='$\mum$', **kwargs):
+             model=None, x_units=r'$\mum$', **kwargs):
     """Plotting chi profiles.
 
     Parameters
     ----------
     axes : list
-        List of axes to add data to
+        List of matplotlib.axes.Axes on which to plot chi profile
     x : array_like
         Array of distance points or list of arrays for multiple data sets.
     data : array_like
-        Array of complex-type chi points or list of arrays for multiple data sets
+        Array of complex-type chi points or list of arrays for multiple data
+        sets
 
     Returns
     -------
-    axes
+    axes : matplotlib.axes.Axes
     """
+
     fontsize = 18
     try:
         ax_re = axes[0]
         ax_im = axes[1]
     except TypeError:
-        print('Incorrect number of matplotlib.axes passed. %d axes were passed' % np.shape(axes))
+        print('Incorrect number of matplotlib.axes passed. %d axes were passed'
+              % np.shape(axes))
 
     plt.rc('axes', prop_cycle=(cycler('color', ['k', 'r', 'b']) +
                                cycler('marker', [(6, 2, 0), 's', '^'])))
 
-    
     if (np.shape(data[0]), np.shape(x[0])) == ((), ()):
         ax_re.plot(x, data.real, **kwargs)
         ax_im.plot(x, data.imag, **kwargs)

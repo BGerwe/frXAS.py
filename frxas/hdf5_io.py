@@ -339,10 +339,26 @@ def get_all_datasets(file, start_indices=[]):
 
     for i, group in enumerate(f.keys()):
         if f[group].keys() and len(start_indices) > 0:
-            data.append(get_group_datasets(f[group]), start_indices[i])
+            data.append(get_group_datasets(f[group], start_indices[i]))
         elif f[group].keys() and len(start_indices) == 0:
             data.append(get_group_datasets(f[group]))
         else:
             print(f[group], ' is empty.')
 
     return data
+
+
+def unpack_data(hdf_file, kind='data_adj'):
+    """
+    """
+    x, data, freqs = [], [], []
+
+    for group in hdf_file:
+        for dset in group[kind]:
+            x.append(np.array(dset[0]))
+            data.append(np.array(dset[1] + 1j * dset[2]))
+        freqs.append(group['frequencies'])
+
+    frequencies = [item for sublist in freqs for item in sublist]
+
+    return x, data, frequencies
