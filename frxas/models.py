@@ -273,8 +273,8 @@ def chi_pattern(x, ld, tg, kappa, gamma, aoo, po2, po2_ref, f):
 
     ao = calc_ao(aoo, po2, po2_ref)
 
-    chi = -1 / (ao + ao * g * np.sqrt(2 * k + 1j * tg * 2 * np.pi * f)) * \
-        np.exp(-x / ld * np.sqrt(2 * k + 1j * tg * 2 * np.pi * f))
+    chi = -1 / (ao + ao * g * np.sqrt(1 + 1j * tg * 2 * np.pi * f)) * \
+        np.exp(-x / ld * np.sqrt(1 + 1j * tg * 2 * np.pi * f))
 
     return chi
 

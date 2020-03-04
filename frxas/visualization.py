@@ -77,4 +77,4 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
     t = ax_re.xaxis.get_offset_text()
     t.set_size(18)
 
-    return axes
+    return ax_re, ax_im

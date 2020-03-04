@@ -351,14 +351,15 @@ def get_all_datasets(file, start_indices=[]):
 def unpack_data(hdf_file, kind='data_adj'):
     """
     """
-    x, data, freqs = [], [], []
+    x, data, freqs, gas = [], [], [], []
 
     for group in hdf_file:
         for dset in group[kind]:
             x.append(np.array(dset[0]))
             data.append(np.array(dset[1] + 1j * dset[2]))
+            gas.append(group['gas'])
         freqs.append(group['frequencies'])
 
     frequencies = [item for sublist in freqs for item in sublist]
 
-    return x, data, frequencies
+    return x, data, frequencies, gas
