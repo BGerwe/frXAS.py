@@ -9,9 +9,9 @@ def test_dataset_fun():
 
     # Using lmfit to make a parameters dictionary
     params = Parameters()
+    params.add('ao_1', value=1.2)
     params.add('ld_1', value=20)
     params.add('tg_1', value=1.5)
-    params.add('ao_1', value=1.2)
     params.add('f_1', value=2)
 
     correct = \
@@ -102,9 +102,9 @@ def test_objective_fun():
     # Using lmfit to make a parameters dictionary for one data set
     params = Parameters()
     for i in range(2):
+        params.add('Ao_%i' % (i+1), value=1.2)
         params.add('ld_%i' % (i+1), value=20)
         params.add('tg_%i' % (i+1), value=1.5)
-        params.add('Ao_%i' % (i+1), value=1.2)
         params.add('f_%i' % (i+1), value=2)
 
     # Data generated from the first distance array with ld=19,
@@ -219,4 +219,31 @@ def test_chi_ideal():
                  0.04420015 + 0.02196573j,  0.04146442 + 0.01551847j,
                  0.03842837 + 0.01001854j,  0.03521183 + 0.00539159j])
 
-    assert np.isclose(models.chi_ideal(x, ld, tg, ao, f), correct).all()
+    assert np.isclose(models.chi_ideal(x, ao, ld, tg, f), correct).all()
+
+
+def test_chi_amp():
+    amp = -0.83333333
+    ld = 20
+    tg = 1.5
+    f = 2
+    x = np.linspace(0, 20, 30)
+
+    correct = \
+        np.array([-0.83333333 + 0.j, -0.74352671 + 0.076924j,
+                 -0.65629759 + 0.13726812j, -0.57289869 + 0.18305707j,
+                 -0.49426079 + 0.21621297j, -0.42103695 + 0.23853677j,
+                 -0.35364362 + 0.25169557j, -0.29229845 + 0.25721527j,
+                 -0.23705481 + 0.25647743j, -0.18783278 + 0.25071963j,
+                 -0.14444679 + 0.24103871j, -0.10663006 + 0.22839617j,
+                 -0.07405578 + 0.21362527j, -0.04635545 + 0.19743932j,
+                 -0.02313443 + 0.1804407j, -0.00398501 + 0.16313049j,
+                 0.01150282 + 0.1459181j,  0.02373271 + 0.12913099j,
+                 0.03309502 + 0.11302407j,  0.03996155 + 0.09778874j,
+                 0.04468174 + 0.08356144j,  0.04757994 + 0.07043168j,
+                 0.04895381 + 0.05844936j,  0.04907355 + 0.04763152j,
+                 0.0481818 + 0.03796845j,  0.04649417 + 0.02942906j,
+                 0.04420015 + 0.02196573j,  0.04146442 + 0.01551847j,
+                 0.03842837 + 0.01001854j,  0.03521183 + 0.00539159j])
+
+    assert np.isclose(models.chi_amp(x, amp, ld, tg, f), correct).all()

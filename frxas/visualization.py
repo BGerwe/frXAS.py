@@ -27,8 +27,8 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
         ax_re = axes[0]
         ax_im = axes[1]
     except TypeError:
-        print('Incorrect number of matplotlib.axes passed. %d axes were passed'
-              % np.shape(axes))
+        print('Incorrect number of matplotlib.axes passed.')
+        raise
 
     if (np.shape(data[0]), np.shape(x[0])) == ((), ()):
         ax_re.plot(x, data.real, **kwargs)
@@ -39,7 +39,7 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
             ax_re.plot(x, fit.real, **kwargs)
             ax_im.plot(x, fit.imag, **kwargs)
 
-    elif np.shape(data[0]) == () or np.shape(x[0]) == ():
+    elif np.shape(data[0]) != np.shape(x[0]):
         raise TypeError("The shapes of `data` and `x` are inconsistent")
     else:
         for i, (xa, dat) in enumerate(zip(x, data)):
