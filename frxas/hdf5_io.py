@@ -355,7 +355,7 @@ def unpack_data(hdf_file, kind='data_adj'):
     xs, data, freqs, gas, sizes = [], [], [], [], []
 
     for group in hdf_file:
-        x, dat, freq = [], [], []
+        x, dat = [], []
         for dset in group[kind]:
             x.append(np.array(dset[0]))
             dat.append(np.array(dset[1] + 1j * dset[2]))

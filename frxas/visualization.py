@@ -1,5 +1,4 @@
 import numpy as np
-from cycler import cycler
 
 from . import models
 
