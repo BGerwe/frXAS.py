@@ -25,9 +25,8 @@ def dataset_fun(params, i, x, fun):
     args = []
     for pname in params:
         # find all parameters with suffix for current index
-        if pname.endswith(str(i+1)):
+        if pname.split('_')[-1] == str(i+1):
             args.append(params[pname])
-    # print(args, i)
     return fun(x, *args)
 
 
@@ -128,7 +127,7 @@ def calc_ao(aoo, po2, po2_ref):
     return ao.real
 
 
-def chi_ideal(x, ld, tg, ao, f):
+def chi_ideal(x, ao, ld, tg, f):
     r"""Summarize the function in one line.
 
     Function for dimensionless vacancy concentrations assuming ideal behavior
@@ -182,7 +181,7 @@ def chi_ideal(x, ld, tg, ao, f):
     return -1 / ao * np.exp(-x / ld * np.sqrt(1 + 1j * tg * 2 * np.pi * f))
 
 
-def chi_amp(x, ld, tg, amp, f):
+def chi_amp(x, amp, ld, tg, f):
     r"""Summarize the function in one line.
 
     Function for dimensionless vacancy concentrations assuming ideal behavior

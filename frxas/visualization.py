@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 from cycler import cycler
 
@@ -31,9 +30,6 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
     except TypeError:
         print('Incorrect number of matplotlib.axes passed. %d axes were passed'
               % np.shape(axes))
-
-    plt.rc('axes', prop_cycle=(cycler('color', ['k', 'r', 'b']) +
-                               cycler('marker', [(6, 2, 0), 's', '^'])))
 
     if (np.shape(data[0]), np.shape(x[0])) == ((), ()):
         ax_re.plot(x, data.real, **kwargs)

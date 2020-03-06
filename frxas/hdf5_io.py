@@ -1,3 +1,4 @@
+import itertools
 import numpy as np
 import h5py
 
@@ -247,7 +248,7 @@ def adjust_dataset(data, start_index):
     return data_adj
 
 
-def get_group_datasets(obj, start_indices=[]):
+def get_group_datasets(obj, start_indices=None):
     """Retrieves all datasets stored in one gas group.
 
     Parameters
@@ -263,14 +264,15 @@ def get_group_datasets(obj, start_indices=[]):
         Dictionary of data stored in an HDF5 group, including metadata such as
         specified gas condition, and frequencies applied for each dataset.
     """
+    if start_indices is None:
+        start_indices = []
+
     gas = obj.attrs['Gas']
     starts = start_indices
 
     if start_indices:
-        # starts = start_indices
         start_adj = True
     else:
-        # starts = []
         start_adj = False
 
     frequencies = []
@@ -288,7 +290,6 @@ def get_group_datasets(obj, start_indices=[]):
             obj[dset].attrs['Start_Index'] = start
             dat = np.array(obj[dset])
             dat_adj = adjust_dataset(dat, start)
-
         else:
             try:
                 start = obj[dset].attrs['Start_Index']
@@ -351,15 +352,25 @@ def get_all_datasets(file, start_indices=[]):
 def unpack_data(hdf_file, kind='data_adj'):
     """
     """
-    x, data, freqs, gas = [], [], [], []
+    xs, data, freqs, gas, sizes = [], [], [], [], []
 
     for group in hdf_file:
+        x, dat, freq = [], [], []
         for dset in group[kind]:
             x.append(np.array(dset[0]))
-            data.append(np.array(dset[1] + 1j * dset[2]))
+            dat.append(np.array(dset[1] + 1j * dset[2]))
             gas.append(group['gas'])
-        freqs.append(group['frequencies'])
+        # Adding individual data sets to list, sorted by frequency
+        xs.append([a for _, a in sorted(zip(group['frequencies'], x))])
+        data.append([b for _, b in sorted(zip(group['frequencies'], dat))])
+        freqs.append(sorted(group['frequencies']))
+        # Tracks how many datasets per gas condition
+        sizes.append(sum(1 for c in dat))
+
+    # Flatten list of lists into list of arrays
+    data = list(itertools.chain.from_iterable(a for a in data))
+    xs = list(itertools.chain.from_iterable(b for b in xs))
 
     frequencies = [item for sublist in freqs for item in sublist]
 
-    return x, data, frequencies, gas
+    return xs, data, frequencies, gas, sizes
