@@ -21,6 +21,10 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
     -------
     axes : matplotlib.axes.Axes
     """
+    try:
+        marker = kwargs.pop('marker')
+    except KeyError:
+        marker = 'x'
 
     fontsize = 18
     try:
@@ -31,8 +35,8 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
         raise
 
     if (np.shape(data[0]), np.shape(x[0])) == ((), ()):
-        ax_re.plot(x, data.real, **kwargs)
-        ax_im.plot(x, data.imag, **kwargs)
+        ax_re.plot(x, data.real, marker=marker, ls='', **kwargs)
+        ax_im.plot(x, data.imag, marker=marker, ls='', **kwargs)
 
         if add_fit:
             fit = models.dataset_fun(params, 0, x, model)
@@ -43,8 +47,8 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
         raise TypeError("The shapes of `data` and `x` are inconsistent")
     else:
         for i, (xa, dat) in enumerate(zip(x, data)):
-            ax_re.plot(xa, dat.real, ls='', **kwargs)
-            ax_im.plot(xa, dat.imag, ls='', **kwargs)
+            ax_re.plot(xa, dat.real, marker=marker, ls='', **kwargs)
+            ax_im.plot(xa, dat.imag, marker=marker, ls='', **kwargs)
 
             if add_fit:
                 fit = models.dataset_fun(params, i, xa, model)

@@ -30,27 +30,7 @@ class TestCase(unittest.TestCase):
             params.add('tg_%i' % (iy+1), value=.1, min=0.01, max=100.0)
             params.add('f_%i' % (iy+1), value=1, vary=False)
 
-        # Passing single data set
         _, axes = plt.subplots(nrows=2)
-        axes = plot_chi(axes, x, chi)
-
-        xc, yc = axes[0].lines[0].get_xydata().T
-        assert (xc == x).all() and (yc == chi.real).all()
-
-        xc, yc = axes[1].lines[0].get_xydata().T
-        assert (xc == x).all() and (yc == chi.imag).all()
-
-        # Passing multiple data sets
-        _, axes = plt.subplots(nrows=2)
-        axes = plot_chi(axes, xs, chis)
-
-        for line in axes[0].lines:
-            xc, yc = line.get_xydata().T
-            assert (xc == x).all() and (yc == chi.real).all()
-
-        for line in axes[1].lines:
-            xc, yc = line.get_xydata().T
-            assert (xc == x).all() and (yc == chi.imag).all()
 
         # Incorrect number of axes
         with self.assertRaises(TypeError):
@@ -64,34 +44,36 @@ class TestCase(unittest.TestCase):
         _, axes = plt.subplots(nrows=2)
         axes = plot_chi(axes, x, chi, params=params, add_fit=True,
                         model=models.chi_ideal)
-        for i, _ in enumerate(axes[0].lines[::2]):
-            xc, yc = axes[0].lines[i].get_xydata().T
-            xc_fit, yc_fit = axes[0].lines[i+1].get_xydata().T
-            assert (xc == x).all() and (yc == chi.real).all()
-            assert (xc == x).all() and np.isclose(yc_fit, chi_fit.real).all()
 
-        for i, _ in enumerate(axes[0].lines[::2]):
-            xc, yc = axes[1].lines[i].get_xydata().T
-            xc_fit, yc_fit = axes[1].lines[i+1].get_xydata().T
-            assert (xc == x).all() and (yc == chi.imag).all()
-            assert (xc == x).all() and np.isclose(yc_fit, chi_fit.imag).all()
+        for i, line in enumerate(axes[0].lines):
+            xc, yc = line.get_xydata().T
+            if i % 2 == 0:
+                assert(xc == x).all() and np.isclose(yc, chi.real).all()
+            else:
+                assert(xc == x).all() and np.isclose(yc, chi_fit.real).all()
+
+        for i, line in enumerate(axes[1].lines):
+            xc, yc = line.get_xydata().T
+            if i % 2 == 0:
+                assert(xc == x).all() and np.isclose(yc, chi.imag).all()
+            else:
+                assert(xc == x).all() and np.isclose(yc, chi_fit.imag).all()
 
         # Multiple data set with model fit
         _, axes = plt.subplots(nrows=2)
         axes = plot_chi(axes, xs, chis, params=params, add_fit=True,
                         model=models.chi_ideal)
 
-#        for i, line in enumerate(axes[0].lines):
-#            xc, yc = axes[0].lines[i].get_xydata().T
-#            xc_fit, yc_fit = axes[0].lines[2*i-1].get_xydata().T
-#            print(2*i-1,yc_fit, chi_fit.real)
-#            print(np.isclose(yc_fit, chi_fit.real).all())
-#            assert (xc == x).all() and (yc == chi.real).all()
-#            assert (xc == x).all() and np.isclose(yc_fit, chi_fit.real).all()
-#            i+=1
-#
-#        for i, _ in enumerate(axes[0].lines[::2]):
-#            xc, yc = axes[1].lines[i].get_xydata().T
-#            xc_fit, yc_fit = axes[1].lines[i+1].get_xydata().T
-#            assert (xc == x).all() and (yc == chi.imag).all()
-#            assert (xc == x).all() and np.isclose(yc_fit, chi_fit.imag).all()
+        for i, line in enumerate(axes[0].lines):
+            xc, yc = line.get_xydata().T
+            if i % 2 == 0:
+                assert(xc == x).all() and np.isclose(yc, chi.real).all()
+            else:
+                assert(xc == x).all() and np.isclose(yc, chi_fit.real).all()
+
+        for i, line in enumerate(axes[1].lines):
+            xc, yc = line.get_xydata().T
+            if i % 2 == 0:
+                assert(xc == x).all() and np.isclose(yc, chi.imag).all()
+            else:
+                assert(xc == x).all() and np.isclose(yc, chi_fit.imag).all()
