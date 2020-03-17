@@ -1,11 +1,11 @@
 import setuptools
 
-with open("README.md", "r") as fh:
+with open("README.md", "r", encoding='utf8') as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="frxas",
-    version="0.0.0",
+    version="0.0.1",
     author="frXAS.py developers",
     author_email="brian.s.gerwe@gmail.com",
     description="A Python package to work with data from frequency-resolved \

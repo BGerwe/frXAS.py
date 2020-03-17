@@ -25,6 +25,10 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
         marker = kwargs.pop('marker')
     except KeyError:
         marker = 'x'
+    try:
+        ls = kwargs.pop('ls')
+    except KeyError:
+        ls = '-'
 
     fontsize = 18
     try:
@@ -35,25 +39,25 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
         raise
 
     if (np.shape(data[0]), np.shape(x[0])) == ((), ()):
-        ax_re.plot(x, data.real, marker=marker, ls='', **kwargs)
-        ax_im.plot(x, data.imag, marker=marker, ls='', **kwargs)
+        ax_re.plot(x, data.real, marker=marker, ls=ls, **kwargs)
+        ax_im.plot(x, data.imag, marker=marker, ls=ls, **kwargs)
 
         if add_fit:
             fit = models.dataset_fun(params, 0, x, model)
-            ax_re.plot(x, fit.real, **kwargs)
-            ax_im.plot(x, fit.imag, **kwargs)
+            ax_re.plot(x, fit.real, ls=ls, **kwargs)
+            ax_im.plot(x, fit.imag, ls=ls, **kwargs)
 
     elif np.shape(data[0]) != np.shape(x[0]):
         raise TypeError("The shapes of `data` and `x` are inconsistent")
     else:
         for i, (xa, dat) in enumerate(zip(x, data)):
-            ax_re.plot(xa, dat.real, marker=marker, ls='', **kwargs)
-            ax_im.plot(xa, dat.imag, marker=marker, ls='', **kwargs)
+            ax_re.plot(xa, dat.real, marker=marker, ls=ls, **kwargs)
+            ax_im.plot(xa, dat.imag, marker=marker, ls=ls, **kwargs)
 
             if add_fit:
                 fit = models.dataset_fun(params, i, xa, model)
-                ax_re.plot(xa, fit.real, marker='', **kwargs)
-                ax_im.plot(xa, fit.imag, marker='', **kwargs)
+                ax_re.plot(xa, fit.real, marker='', ls=ls, **kwargs)
+                ax_im.plot(xa, fit.imag, marker='', ls=ls, **kwargs)
 
     ax_re.set_ylabel(r'$\chi^{\prime}$', fontsize=fontsize)
     ax_im.set_ylabel(r'$\chi^{\prime\prime}$', fontsize=fontsize)
