@@ -27,6 +27,8 @@ def dataset_fun(params, i, x, fun):
         # find all parameters with suffix for current index
         if pname.split('_')[-1] == str(i+1):
             args.append(params[pname])
+    
+    #print(args)
     return fun(x, *args)
 
 
@@ -38,7 +40,8 @@ def calc_resid(data, model):
         resid_c = resid.ravel().view(np.float)
     else:
         resid_c = resid
-
+    resid = None
+    data = None
     return resid_c
 
 
@@ -77,8 +80,12 @@ def objective_fun(params, x, data, fun):
                 # convert to floats as required by minimize()
                 resid.append(calc_resid(data[i],
                              dataset_fun(params, i, x[i], fun)))
-
+            else:
+                resid.append(calc_resid(data[i],
+                             dataset_fun(params, i, x[i], fun)))
     # change to array so residuals can be flattened as needed by minimize
+    data = None
+    ndata = None
     resid = np.array(resid)
     return np.concatenate(resid).ravel()
 
