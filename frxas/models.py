@@ -1,5 +1,7 @@
+import re
 import numpy as np
 from scipy.special import lambertw
+from lmfit import Parameters, fit_report
 
 
 def dataset_fun(params, i, x, fun):
@@ -27,8 +29,8 @@ def dataset_fun(params, i, x, fun):
         # find all parameters with suffix for current index
         if pname.split('_')[-1] == str(i+1):
             args.append(params[pname])
-    
-    #print(args)
+
+    # print(args)
     return fun(x, *args)
 
 
@@ -241,3 +243,86 @@ def chi_amp(x, amp, ld, tg, f):
     # after closing the docstring.
 
     return amp * np.exp(-x / ld * np.sqrt(1 + 1j * tg * 2 * np.pi * f))
+
+
+def write_fit_report(filename, fit, start_inds=None):
+    """Function to save lmfit minimize results from `fit_report`
+    Parameters
+    ----------
+    filename: str
+        Directory and file name to save fit report
+    fit: lmfit.minimizer.MinimizerResult
+        Output from lmfit minimizer
+    start_inds: array like
+        Indices of starting positions for each fr-XAS profile.
+    """
+    f = open(filename, "w+")
+    report = fit_report(fit)
+    f.write(f"Starting indices: {start_inds} \n")
+    f.write(report)
+    f.close()
+
+
+def read_fit_report(filename):
+    """Extracts information from saved fit report into a `Parameters` object
+    Parameters
+    ----------
+    filename: str
+        Directory and file name of saved fit report
+    Returns
+    -------
+    params: lmfit.parameter.Parameters
+        Object containing all parameter information from saved fit. Min and Max
+        values are 20% lower and higher, respectively, than the estimated
+        standard error from the fit, if available.
+    """
+    f = open(filename, mode='r')
+    lines = f.readlines()
+    f.close()
+
+    for i, line in enumerate(lines):
+        if line.startswith("[[Variables]]"):
+            start_line = i + 1
+
+        elif line.startswith("[[Correlations]]"):
+            end_line = i
+    raw = lines[start_line:end_line]
+
+    # Pulling out key info from each line
+    params = Parameters()
+    # lmfit gets mad when you try to add an expression for a variable that
+    # that doesn't exist yet, so we have to do it at the end by saving all
+    # parameter names and expr variables
+    names, exprs = [], []
+    for line in raw:
+        name_str = re.search(r'[a-z]+_[0-9]+', line)
+        val_str = re.search(r'[0-9]+.[0-9]+', line)
+        bound_str = re.search(r'\+/- [0-9]+\.*[0-9]*', line)
+        fix_str = re.search(r'fixed', line)
+        expr_str = re.search(r'== .*', line)
+
+        if name_str:
+            name = name_str.group()
+            names.append(name)
+        if val_str:
+            val = float(val_str.group())
+        if bound_str and val:
+            lb = val - float(bound_str.group()[4:]) * 1.2
+            ub = val + float(bound_str.group()[4:]) * 1.2
+        else:
+            lb = -np.inf
+            ub = np.inf
+        vary = True
+        if fix_str:
+            vary = False
+        expr = None
+        if expr_str:
+            expr = expr_str.group()[4:-1]
+        exprs.append(expr)
+
+        params.add(name, value=val, min=lb, max=ub, vary=vary)
+
+    # Now we set expressions
+    for name, expr in zip(names, exprs):
+        params[name].expr = expr
+    return params

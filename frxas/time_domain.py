@@ -8,8 +8,8 @@ from numpy import fft
 from scipy.special import dawsn
 
 
-def extract_data(direc, point, amplitude, file, start=0, end=-1,
-                 xray_raw=False):
+def extract_data(direc, point, amplitude, file, start=0, end=-1, irr=100,
+                 xray_disp=True, xray_raw=False):
     """
     """
 
@@ -29,9 +29,25 @@ def extract_data(direc, point, amplitude, file, start=0, end=-1,
         t = np.append(t, t[-1] + t[1])
         t = np.append(t, t[-1] + dum[1:, 0])
 
+    # Subtract average to remove DC component from signals. The X-ray signal
+    # may still have a DC component from beam intensity drifts during
+    # measurement time.
     V = sub_mean(data[:, 4])
-    J = sub_mean(data[:, 3])
-    Ir = sub_mean(data[:, 2] / data[:, 1])
+
+    # Use value of potentiostat internal resistor to convert measured current
+    # from units of volts to amperes
+    J = sub_mean(data[:, 3]) / irr
+
+    Ir = data[:, 2] / data[:, 1]
+    Iravg = np.mean(Ir)
+    # Divide by average value of X-ray signal to make it a displacement from
+    # the mean, which is more physically significant for spatially resolved
+    # measurements. Have option of leaving average for incident energy
+    # resolved measurements.
+    Ir = sub_mean(Ir)
+    if xray_disp:
+        Ir = Ir / Iravg
+
     if xray_raw:
         Io = data[:, 1]
         If = data[:, 2]
@@ -189,7 +205,7 @@ def signal_align():
     return  # ref, sig
 
 
-def gauss_win(signal, freq_in, time, window_param):
+def gauss_window(signal, freq_in, time, window_param):
     r"""Applies a gaussian windowing function to a time-domain signal
 
     Parameters
@@ -295,7 +311,8 @@ def dawson_fft(frequencies, freq_in, window_param, harmonic=1):
     return d_k
 
 
-def fft_shape(frequencies, freq_in, window_param, harmonic=1, re_comp=1, im_comp=1):
+def fft_shape(frequencies, freq_in, window_param, harmonic=1, re_comp=1,
+              im_comp=1):
     r""" Calculates the lineshape of a gaussian windowed signal for fitting
 
     Parameters

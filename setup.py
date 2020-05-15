@@ -11,7 +11,7 @@ setuptools.setup(
     description="A Python package to work with data from frequency-resolved \
                 X-ray absorption spectroscopy measurements.",
     long_description=long_description,
-    long_description_content_type= "text/markdown",
+    long_description_content_type="text/markdown",
     url="https://frxaspy.readthedocs.io/en/latest/",
     packages=setuptools.find_packages(),
     install_requires=['matplotlib>=3.0', 'numpy>=1.14', 'scipy>=1.0'],
