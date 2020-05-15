@@ -246,7 +246,7 @@ def chi_amp(x, amp, ld, tg, f):
 
 
 def write_fit_report(filename, fit, start_inds=None):
-    """Function to save lmfit minimize results from `fit_report`
+    """Function to save lmfit minimize results from `fit_report`.
     Parameters
     ----------
     filename: str
@@ -264,7 +264,7 @@ def write_fit_report(filename, fit, start_inds=None):
 
 
 def read_fit_report(filename):
-    """Extracts information from saved fit report into a `Parameters` object
+    """Extracts information from saved fit report into a `Parameters` object.
     Parameters
     ----------
     filename: str
@@ -295,9 +295,9 @@ def read_fit_report(filename):
     # parameter names and expr variables
     names, exprs = [], []
     for line in raw:
-        name_str = re.search(r'[a-z]+_[0-9]+', line)
-        val_str = re.search(r'[0-9]+.[0-9]+', line)
-        bound_str = re.search(r'\+/- [0-9]+\.*[0-9]*', line)
+        name_str = re.search(r'[a-zA-Z]+_[0-9]+', line)
+        val_str = re.search(r' (\d+(\.\d+)?)', line)
+        bound_str = re.search(r'\+/- (\d+(\.\d+)?)', line)
         fix_str = re.search(r'fixed', line)
         expr_str = re.search(r'== .*', line)
 
