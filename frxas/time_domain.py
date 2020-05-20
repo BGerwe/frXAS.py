@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 import glob
+import lmfit
 
 from pandas import read_csv
 from numpy import fft
@@ -179,6 +180,109 @@ def phase_align(time, reference, signal, freq_in, phase=0, harmonics=1):
           " Angle2: ", np.angle(sig_fft_adj[idx_p], deg=True))
 
     sig = fft.ifft(fft.ifftshift(sig_fft_adj)*(Ns/2))
+
+    return sig
+
+
+def phase_align2(time, reference, signal, freq_in, window_param, phase=0,
+                 harmonics=1):
+    r"""Adjusts a time-domain reference to a desired phase angle and aligns
+    a time-domain signal to the reference while maintaining phase coherence.
+
+    Parameters
+    ----------
+    time : np.ndarray
+        Array of the time sample points corresponding to reference and signal
+    reference : np.ndarray
+        Array containing values of the reference data
+    signal : np.ndarray
+        Array containing values of the time-domain signal to be aligned
+    freq_in : float
+        Expected frequency to be found in reference and signal
+    phase : float
+        Desired phase angle, in degrees, for adjusted reference
+    harmonics : integer
+        Number of harmonics to analyze for phase adjustments
+
+    Returns
+    -------
+    ref : np.ndarray
+        Array of the reference data after phase adjustment
+    sig : np.ndarray
+        Array of the time-domain signal after phase adjustment
+    """
+    Ns = np.size(time)
+
+    # Apply gaussian window (apodization)
+    ref_win = gauss_window(reference, freq_in, time, window_param)
+    sig_win = gauss_window(signal, freq_in, time, window_param)
+
+    freqs = fft.fftshift(fft.fftfreq(Ns, time[1]))
+    ref_fft = fft.fftshift(fft.fft(ref_win)/(Ns * np.pi))
+    sig_fft = fft.fftshift(fft.fft(sig_win)/(Ns * np.pi))
+    del reference, signal, time, ref_win, sig_win
+
+    # Set up lmfit parameters and model classes
+    params = lmfit.Parameters()
+    model = None
+    # Change range to start from 0 to capture DC behavior, which is nominally
+    # subtracted, but may be unavoidable in X-ray data from changing incident
+    # beam flux. Voltage and current shouldn't have significant DC components.
+    for i in range(1, harmonics+1):
+        if model:
+            model += lmfit.Model(fft_shape, prefix=f'h{i}_', independent_vars=[
+                                 'frequencies', 'freq_in', 'window_param'])
+        else:
+            model = lmfit.Model(fft_shape, prefix=f'h{i}_', independent_vars=[
+                                'frequencies', 'freq_in', 'window_param'])
+        params.add('h%i_harmonic' % i, value=i, vary=False)
+        params.add('h%i_re_comp' % i, value=0)
+        params.add('h%i_im_comp' % i, value=-1)
+
+    # Now fit both models. This can take a long time with large data files.
+    ref_fit = model.fit(ref_fft, params=params, frequencies=freqs,
+                        freq_in=freq_in, window_param=window_param)
+    sig_fit = model.fit(sig_fft, params=params, frequencies=freqs,
+                        freq_in=freq_in, window_param=window_param)
+
+    # Pull out magnitudes and phase angles of harmonics into a dict so
+    # original info isn't overwritten
+
+    ref_comps = {}
+    sig_comps = {}
+
+    for i in range(1, harmonics+1):
+        ref_comps[f'ang_{i}'] = \
+            np.angle(ref_fit.params[f'h{i}_re_comp'].value + 1j *
+                     ref_fit.params[f'h{i}_im_comp'].value)
+        ref_comps[f'mag_{i}'] = \
+            np.abs(ref_fit.params[f'h{i}_re_comp'].value + 1j *
+                   ref_fit.params[f'h{i}_im_comp'].value)
+        sig_comps[f'ang_{i}'] = \
+            np.angle(sig_fit.params[f'h{i}_re_comp'].value + 1j *
+                     sig_fit.params[f'h{i}_im_comp'].value)
+        sig_comps[f'mag_{i}'] = \
+            np.abs(sig_fit.params[f'h{i}_re_comp'].value + 1j *
+                   sig_fit.params[f'h{i}_im_comp'].value)
+
+    # Desired phase angle to radians and find adjustment factor
+    phs = phase * np.pi/180
+    ang_adj = phs - ref_comps['ang_1']
+
+    # Adjust real an imag component of each harmonic by adjustment factor
+    # times harmonic index
+
+    for i in range(1, harmonics+1):
+        ref_fit.params[f'h{i}_re_comp'].value = \
+            np.cos(ref_comps[f'ang_{i}'] + ang_adj * i) * ref_comps[f'mag_{i}']
+        ref_fit.params[f'h{i}_im_comp'].value = \
+            np.sin(ref_comps[f'ang_{i}'] + ang_adj * i) * ref_comps[f'mag_{i}']
+        sig_fit.params[f'h{i}_re_comp'].value = \
+            np.cos(sig_comps[f'ang_{i}'] + ang_adj * i) * sig_comps[f'mag_{i}']
+        sig_fit.params[f'h{i}_im_comp'].value = \
+            np.sin(sig_comps[f'ang_{i}'] + ang_adj * i) * sig_comps[f'mag_{i}']
+
+    sig = fft.ifft(fft.ifftshift(sig_fit.best_fit*(Ns*np.pi)))
 
     return sig
 
