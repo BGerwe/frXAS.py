@@ -89,42 +89,8 @@ def freq_bin(freq_in, frequencies, harmonic):
     return bins
 
 
-def phase_adjust(fft, bins, phase=0):
-    r"""Adjusts components of an fft to represent the desired phase
-
-    Parameters
-    ----------
-    fft : np.ndarray
-        Array containing the FFT of the signal to be phase adjusted
-    bins : np.ndarray
-        Array of shape(harmonic, 2) containing indices for the fft bins of the
-        desired harmonic frequencies.
-    phase : float
-        Desired phase angle, in degrees, for resulting FFT
-
-    Returns
-    -------
-    fft_adj : np.ndarray
-        Array containing the FFT of a signal adjusted to the desired phase
-        angle
-    """
-    # Pull out indices of negative and positive fundamental frequency
-    idx_n = bins[0, 0]
-    idx_p = bins[0, 1]
-
-    phs = phase * np.pi / 180
-
-    fft_adj = fft.copy()
-    del fft
-    mag = np.abs(fft_adj[idx_p])
-
-    fft_adj[idx_p] = (np.cos(phs) + 1j * np.sin(phs)) * mag
-    fft_adj[idx_n] = (np.cos(phs) - 1j * np.sin(phs)) * mag
-
-    return fft_adj
-
-
-def phase_align(time, reference, signal, freq_in, phase=0, harmonics=1):
+def phase_align(time, reference, signal, freq_in, window_param, phase=0,
+                harmonics=1, return_params=True):
     r"""Adjusts a time-domain reference to a desired phase angle and aligns
     a time-domain signal to the reference while maintaining phase coherence.
 
@@ -145,71 +111,10 @@ def phase_align(time, reference, signal, freq_in, phase=0, harmonics=1):
 
     Returns
     -------
-    ref : np.ndarray
-        Array of the reference data after phase adjustment
     sig : np.ndarray
         Array of the time-domain signal after phase adjustment
-    """
-    Ns = np.size(time)
-
-    freqs = fft.fftshift(fft.fftfreq(Ns, time[1]))
-    ref_fft = fft.fftshift(fft.fft(reference)/(Ns/2))
-    sig_fft = fft.fftshift(fft.fft(signal)/(Ns/2))
-    del reference, signal, time
-    bins = freq_bin(freq_in, freqs, harmonics)
-    # Pull out indices of negative and positive fundamental frequency
-    idx_p = bins[0, 1]
-
-    phs = phase * np.pi/180
-
-    ref_ang = np.angle(ref_fft[idx_p])
-    sig_ang = np.angle(sig_fft[idx_p])
-
-    ang_adj = phs - ref_ang
-    print("Mag1:",  np.abs(ref_fft[idx_p]))
-    print("Before Angle1: ", ref_ang*180/np.pi, " Angle2: ",
-          sig_ang*180/np.pi)
-    print("Angle adj: ", ang_adj*180/np.pi)
-    dum_fft = np.zeros(sig_fft.shape, dtype='complex')
-    dum_fft[bins[0, 0]] = sig_fft[bins[0, 0]]
-    dum_fft[idx_p] = sig_fft[idx_p]
-    ref_fft_adj = phase_adjust(ref_fft, bins, phase)
-    sig_fft_adj = phase_adjust(dum_fft, bins, (sig_ang + ang_adj)*180/np.pi)
-
-    print("After Angle1: ", np.angle(ref_fft_adj[idx_p], deg=True),
-          " Angle2: ", np.angle(sig_fft_adj[idx_p], deg=True))
-
-    sig = fft.ifft(fft.ifftshift(sig_fft_adj)*(Ns/2))
-
-    return sig
-
-
-def phase_align2(time, reference, signal, freq_in, window_param, phase=0,
-                 harmonics=1):
-    r"""Adjusts a time-domain reference to a desired phase angle and aligns
-    a time-domain signal to the reference while maintaining phase coherence.
-
-    Parameters
-    ----------
-    time : np.ndarray
-        Array of the time sample points corresponding to reference and signal
-    reference : np.ndarray
-        Array containing values of the reference data
-    signal : np.ndarray
-        Array containing values of the time-domain signal to be aligned
-    freq_in : float
-        Expected frequency to be found in reference and signal
-    phase : float
-        Desired phase angle, in degrees, for adjusted reference
-    harmonics : integer
-        Number of harmonics to analyze for phase adjustments
-
-    Returns
-    -------
-    ref : np.ndarray
-        Array of the reference data after phase adjustment
-    sig : np.ndarray
-        Array of the time-domain signal after phase adjustment
+    sig_fit: lmfit.Model
+        Model class object
     """
     Ns = np.size(time)
 
@@ -284,7 +189,10 @@ def phase_align2(time, reference, signal, freq_in, window_param, phase=0,
 
     sig = fft.ifft(fft.ifftshift(sig_fit.best_fit*(Ns*np.pi)))
 
-    return sig
+    if return_params:
+        return sig, sig_fit
+    else:
+        return sig
 
 
 def get_freq(direc, point, amplitude, file):
@@ -300,13 +208,6 @@ def sub_mean(data):
     """
     """
     return data - data.mean()
-
-
-def signal_align():
-    """
-    """
-
-    return  # ref, sig
 
 
 def gauss_window(signal, freq_in, time, window_param):

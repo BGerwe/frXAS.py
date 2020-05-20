@@ -1,10 +1,13 @@
 import itertools
+import re
 import numpy as np
 import h5py
+import lmfit
+from . import time_domain
 
 
-def create_hdf5_file(filename: str, gases: list, temp=700):
-    r""" Makes an HDF5 file to store data.
+def create_frxas_profile_hdf5(filename: str, gases: list, temp=700):
+    r""" Makes an HDF5 file to store data for fr-XAS profiles.
 
     Parameters
     ----------
@@ -46,7 +49,7 @@ def create_hdf5_file(filename: str, gases: list, temp=700):
     return
 
 
-def open_frxas_file(filename: str):
+def open_hdf5(filename: str):
     r"""Opens existing hdf5 file containing frXAS data.
 
     Parameters
@@ -63,13 +66,14 @@ def open_frxas_file(filename: str):
         f = h5py.File(filename + ".h5", "r+")
 
     except TypeError:
-        print("Error encountered. Check filename.")
+        print("Error encountered. Make sure filename is a valid path for an",
+              "existing file.")
         return
 
     return f
 
 
-def close_frxas_file(filename: str):
+def close_hdf5(filename: str):
     r"""Closes specified hdf5 file.
 
     Parameters
@@ -144,7 +148,7 @@ def add_frxas_profile(file, gas, frequency, data):
         f.keys()
 
     except AttributeError:
-        f = open_frxas_file(file)
+        f = open_hdf5(file)
 
     try:
         if dset in f[group].keys():
@@ -181,7 +185,7 @@ def print_data_shapes(file):
         f.keys()
 
     except AttributeError:
-        f = open_frxas_file(file)
+        f = open_hdf5(file)
 
     for group in f.keys():
         if f[group].keys():
@@ -208,7 +212,7 @@ def get_gas_condition(file):
         f.keys()
 
     except AttributeError:
-        f = open_frxas_file(file)
+        f = open_hdf5(file)
 
     for group in f.keys():
         name = str(group).split("'")
@@ -243,6 +247,7 @@ def adjust_dataset(data, start_index):
     rows, cols = data.shape
     data_adj = np.zeros((rows, cols-start_index))
     data_adj[:rows, :] = data[:, start_index:].copy()
+    # Make positions in first row relative to first value
     data_adj[0, :] = data_adj[0, :] - data_adj[0, 0]
 
     return data_adj
@@ -334,7 +339,7 @@ def get_all_datasets(file, start_indices=[]):
         f.keys()
 
     except AttributeError:
-        f = open_frxas_file(file)
+        f = open_hdf5(file)
 
     data = []
 
@@ -374,3 +379,167 @@ def unpack_data(hdf_file, kind='data_adj'):
     frequencies = [item for sublist in freqs for item in sublist]
 
     return xs, data, frequencies, gas, sizes
+
+
+def save_time_domain_fit(filename: str, fit_model):
+    """Store most important information from `lmfit.ModelResult` in hdf5 file.
+    Parameters
+    ----------
+    filename : str
+        File path name excluding ".h5" extension.
+    fit_model : lmfit.model.ModelResult
+        The object returned by lmfit.Model.fit() containing statistics, data,
+        and best fit parameters.
+    """
+    try:
+        if type(filename) == str:
+            f = h5py.File(filename + ".h5", "a")
+        else:
+            print(filename + " is not a string. File not created.")
+            return
+    except TypeError:
+        print("An error occured while creating the file")
+        return
+
+    try:
+        f.create_group("Fit Statistics")
+        f.create_group("Variables")
+        f.create_group("Independent Variables")
+    except ValueError:
+        pass
+    # Adding these parts as attributes seems easier than making into a dataset
+    fit_stats = f["Fit Statistics"]
+    fit_stats.attrs['Fitting Method'] = fit_model.method
+    fit_stats.attrs['Function Evals'] = fit_model.nfev
+    fit_stats.attrs['Data Points'] = fit_model.ndata
+    fit_stats.attrs['Number of Variables'] = fit_model.nvarys
+    fit_stats.attrs['Chi Squared'] = fit_model.chisqr
+    fit_stats.attrs['Reduced Chi Squared'] = fit_model.redchi
+    fit_stats.attrs['Akaike Info Criteria'] = fit_model.aic
+    fit_stats.attrs['Bayesian Info Criteria'] = fit_model.bic
+
+    # Kind of clunky way to get lmfit model info out, but it works for now
+    mod_str = str(fit_model.model).split(": ")[-1][:-1]
+    mod_comps = mod_str.split('Model(')
+    fcns, prefixes = [], []
+    for mod in mod_comps[1:]:
+        fcn = mod.split(",")[0]
+        match = re.search(r'h\d+_', mod)
+        if match:
+            prefix = match.group()
+        fcns.append(fcn)
+        prefixes.append(prefix)
+
+    fit_stats.attrs['Model Functions'] = fcns
+    fit_stats.attrs['Model Prefixes'] = prefixes
+
+    # Store independent variables: frequencies, freq_in, window_param
+    # Using datasets since frequencies will be too large for storing as attr
+    ind_varis = f['Independent Variables']
+    for kw in fit_model.userkws:
+        try:
+            if kw in ind_varis.keys():
+                del ind_varis[kw]
+                ind_varis.create_dataset(kw, data=fit_model.userkws[kw])
+            else:
+                ind_varis.create_dataset(kw, data=fit_model.userkws[kw])
+        except (KeyError, RuntimeError):
+            print(f'Data entry for {kw} was unsuccessful. Check data',
+                  f'type of {kw}')
+
+    # Store variables AKA parameters from lmfit model
+    varis = f['Variables']
+
+    param_info = np.zeros((len(fit_model.params), 4))
+    param_names = []
+    for i, kw in enumerate(fit_model.params.keys()):
+        param_names.append(kw)
+        param = np.array([fit_model.params[kw].value, fit_model.params[kw].min,
+                         fit_model.params[kw].max, fit_model.params[kw].vary])
+        param_info[i, :] = param
+
+    # Store names as attribute because HDF doesn't play nice with arrays
+    # of strings
+    varis.attrs['Parameter Names'] = param_names
+    try:
+        if 'Parameter Info' in varis.keys():
+            del varis['Parameter Info']
+            varis.create_dataset('Parameter Info', data=np.array(param_info))
+            varis['Parameter Info'].attrs['Values Order'] = \
+                'Value, Min, Max, Varies'
+        else:
+            varis.create_dataset('Parameter Info', data=np.array(param_info))
+            varis['Parameter Info'].attrs['Values Order'] = \
+                'Value, Min, Max, Varies'
+        if 'Data' in varis.keys():
+            del varis['Data']
+            varis.create_dataset('Data', data=fit_model.data)
+        else:
+            varis.create_dataset('Data', data=fit_model.data)
+    except (KeyError, RuntimeError):
+        print(f'Parameter names and value entry unsuccessful.')
+
+    f.close()
+    return
+
+
+def load_time_domain_fit(filename: str):
+    """Loads and unpacks data in hdf5 file stored by save_time_domain_fit().
+    Parameters
+    ----------
+    filename : str
+        File path name excluding ".h5" extension.
+    Returns
+    -------
+    fit_model : lmfit.model.ModelResult
+        The object returned by lmfit.Model.fit() containing statistics, data,
+        and best fit parameters.
+    """
+    f = open_hdf5(filename)
+
+    fit_stats = f['Fit Statistics']
+    fcns = fit_stats.attrs.get('Model Functions')
+    prefixes = fit_stats.attrs.get('Model Prefixes')
+
+    model_form = None
+    for fcn, prefix in zip(fcns, prefixes):
+        if model_form:
+            model_form += \
+                lmfit.Model(getattr(time_domain, fcn), prefix=prefix,
+                            independent_vars=['frequencies', 'freq_in',
+                                              'window_param'])
+        else:
+            model_form = \
+                lmfit.Model(getattr(time_domain, fcn), prefix=prefix,
+                            independent_vars=['frequencies', 'freq_in',
+                                              'window_param'])
+
+    # Initialize `ModelResult` class with empty parameters
+    params = lmfit.Parameters()
+    fit_model = lmfit.model.ModelResult(model_form, params)
+    # Load in fit statistics
+    fit_model.method = fit_stats.attrs['Fitting Method']
+    fit_model.nfev = fit_stats.attrs['Function Evals']
+    fit_model.ndata = fit_stats.attrs['Data Points']
+    fit_model.nvarys = fit_stats.attrs['Number of Variables']
+    fit_model.chisqr = fit_stats.attrs['Chi Squared']
+    fit_model.redchi = fit_stats.attrs['Reduced Chi Squared']
+    fit_model.aic = fit_stats.attrs['Akaike Info Criteria']
+    fit_model.bic = fit_stats.attrs['Bayesian Info Criteria']
+
+    # Load in independent variables
+    ind_varis = {}
+    for name, val in f['Independent Variables'].items():
+        ind_varis[name] = np.array(val)
+    fit_model.userkws = ind_varis
+
+    # Load in parameters
+    varis = f['Variables']
+    for name, info in zip(varis.attrs['Parameter Names'],
+                          varis['Parameter Info']):
+        params.add(name, value=info[0], min=info[1], max=info[2], vary=info[3])
+    fit_model.params = params
+    fit_model.data = np.array(varis['Data'])
+
+    f.close()
+    return fit_model

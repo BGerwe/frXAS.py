@@ -245,7 +245,7 @@ def chi_amp(x, amp, ld, tg, f):
     return amp * np.exp(-x / ld * np.sqrt(1 + 1j * tg * 2 * np.pi * f))
 
 
-def write_fit_report(filename, fit, start_inds=None):
+def save_fit_report(filename, fit, start_inds=None):
     """Function to save lmfit minimize results from `fit_report`.
     Parameters
     ----------
@@ -263,7 +263,7 @@ def write_fit_report(filename, fit, start_inds=None):
     f.close()
 
 
-def read_fit_report(filename):
+def load_fit_report(filename):
     """Extracts information from saved fit report into a `Parameters` object.
     Parameters
     ----------
@@ -285,6 +285,8 @@ def read_fit_report(filename):
             start_line = i + 1
 
         elif line.startswith("[[Correlations]]"):
+            end_line = i
+        else:
             end_line = i
     raw = lines[start_line:end_line]
 
