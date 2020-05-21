@@ -5,7 +5,7 @@ from lmfit import Parameters, fit_report
 
 
 def dataset_fun(params, i, x, fun):
-    """Calculate a function's lineshape from parameters for a single data set.
+    r"""Calculate a function's lineshape from parameters for a single data set.
 
     Parameters
     ----------
@@ -138,7 +138,7 @@ def calc_ao(aoo, po2, po2_ref):
 
 
 def chi_ideal(x, ao, ld, tg, f):
-    """Function for dimensionless vacancy concentrations assuming ideal
+    r"""Function for dimensionless vacancy concentrations assuming ideal
     behavior and overpotential control.
 
     Parameters
@@ -190,7 +190,7 @@ def chi_ideal(x, ao, ld, tg, f):
 
 
 def chi_amp(x, amp, ld, tg, f):
-    """Function for dimensionless vacancy concentrations assuming ideal
+    r"""Function for dimensionless vacancy concentrations assuming ideal
     behavior and overpotential control.
 
     Parameters
@@ -243,7 +243,7 @@ def chi_amp(x, amp, ld, tg, f):
 
 
 def save_fit_report(filename, fit, start_inds=None):
-    """Function to save lmfit minimize results from `fit_report`.
+    r"""Function to save lmfit minimize results from `fit_report`.
 
     Parameters
     ----------
@@ -263,7 +263,7 @@ def save_fit_report(filename, fit, start_inds=None):
 
 
 def load_fit_report(filename):
-    """Extracts information from saved fit report into a `Parameters` object.
+    r"""Extracts information from saved fit report into a `Parameters` object.
 
     Parameters
     ----------

@@ -7,7 +7,8 @@ from . import time_domain
 
 
 def create_frxas_profile_hdf5(filename: str, gases: list, temp=700):
-    """Makes an HDF5 file to store data for fr-XAS profiles.
+    """
+    Makes an HDF5 file to store data for fr-XAS profiles.
 
     Parameters
     ----------
@@ -21,7 +22,7 @@ def create_frxas_profile_hdf5(filename: str, gases: list, temp=700):
         700 °C.
     """
     try:
-        if type(filename) == str:
+        if isinstance(filename, str):
             f = h5py.File(filename + ".h5", "a")
         else:
             print(filename + " is not a string. File not created.")

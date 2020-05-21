@@ -117,7 +117,7 @@ def get_windowed_fft(time, signal, freq_in, window_param):
 
 
 def fit_windowed_fft(frequencies, signal_fft, freq_in, window_param,
-                     harmonics=1, fit_kws=None):
+                     harmonics=1, fit_kws=None, weights=None):
     """Fits the windowed fft.
 
     Parameters
@@ -163,12 +163,13 @@ def fit_windowed_fft(frequencies, signal_fft, freq_in, window_param,
         params.add('h%i_im_comp' % i, value=-1)
 
     model_fit = model.fit(signal_fft, params=params, frequencies=frequencies,
-                          freq_in=freq_in, window_param=window_param)
+                          freq_in=freq_in, window_param=window_param,
+                          weights=weights)
     return model_fit
 
 
 def phase_align(time, reference, signal, freq_in, window_param, phase=0,
-                harmonics=1, return_params=True, fit_kws=None):
+                harmonics=1, return_params=True, fit_kws=None, weights=None):
     """Adjusts a time-domain reference to a desired phase angle and aligns
     a time-domain signal to the reference while maintaining phase coherence.
 
@@ -213,9 +214,11 @@ def phase_align(time, reference, signal, freq_in, window_param, phase=0,
 
     # Now fit both models. This can take a long time with large data files.
     ref_fit = fit_windowed_fft(freqs, ref_fft, freq_in, window_param,
-                               harmonics=harmonics, fit_kws=fit_kws)
+                               harmonics=harmonics, fit_kws=fit_kws,
+                               weights=weights)
     sig_fit = fit_windowed_fft(freqs, sig_fft, freq_in, window_param,
-                               harmonics=harmonics, fit_kws=fit_kws)
+                               harmonics=harmonics, fit_kws=fit_kws,
+                               weights=weights)
     del ref_fft, sig_fft
 
     # Pull out magnitudes and phase angles of harmonics into a dict so
