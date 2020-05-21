@@ -89,44 +89,55 @@ def freq_bin(freq_in, frequencies, harmonic):
     return bins
 
 
-def phase_align(time, reference, signal, freq_in, window_param, phase=0,
-                harmonics=1, return_params=True):
-    r"""Adjusts a time-domain reference to a desired phase angle and aligns
-    a time-domain signal to the reference while maintaining phase coherence.
-
+def get_windowed_fft(time, signal, freq_in, window_param):
+    """Applies gaussian window to signal and calculates the complex FFT.
     Parameters
     ----------
     time : np.ndarray
         Array of the time sample points corresponding to reference and signal
-    reference : np.ndarray
-        Array containing values of the reference data
     signal : np.ndarray
         Array containing values of the time-domain signal to be aligned
     freq_in : float
         Expected frequency to be found in reference and signal
-    phase : float
-        Desired phase angle, in degrees, for adjusted reference
-    harmonics : integer
-        Number of harmonics to analyze for phase adjustments
-
+    window_param : float
+        Defines decay length of window function. Corresponds to number of
+        waveforms at the signals frequency.
     Returns
     -------
-    sig : np.ndarray
-        Array of the time-domain signal after phase adjustment
-    sig_fit: lmfit.Model
-        Model class object
+    sig_win_fft: np.ndarray
+        Complex FFT of signal with window function applied.
     """
     Ns = np.size(time)
-
-    # Apply gaussian window (apodization)
-    ref_win = gauss_window(reference, freq_in, time, window_param)
     sig_win = gauss_window(signal, freq_in, time, window_param)
+    sig_win_fft = fft.fftshift(fft.fft(sig_win)/(Ns * np.pi))
+    return sig_win_fft
 
-    freqs = fft.fftshift(fft.fftfreq(Ns, time[1]))
-    ref_fft = fft.fftshift(fft.fft(ref_win)/(Ns * np.pi))
-    sig_fft = fft.fftshift(fft.fft(sig_win)/(Ns * np.pi))
-    del reference, signal, time, ref_win, sig_win
 
+def fit_windowed_fft(frequencies, signal_fft, freq_in, window_param,
+                     harmonics=1, fit_kws=None):
+    """
+    Parameters
+    ----------
+    frequencies: np.ndarray
+        Array of frequencies in FFT ordered from negative to positive, as
+        output by numpy.fft.fftshift
+    signal_fft: np.ndarray
+        Complex FFT of signal with window function applied.
+    freq_in : float
+        Expected frequency to be found in reference and signal.
+    window_param : float
+        Defines decay length of window function. Corresponds to number of
+        waveforms at the signals frequency.
+    harmonics : integer
+        Number of harmonics to analyze for phase adjustments.
+    fit_kws: dict, optional
+        Optional parameters to pass to the minimizer.
+    Returns
+    -------
+    model_fit: lmfit.ModelResult
+        ModelResult class object with best fit parameters and various goodness-
+        of-fit statistics
+    """
     # Set up lmfit parameters and model classes
     params = lmfit.Parameters()
     model = None
@@ -136,19 +147,70 @@ def phase_align(time, reference, signal, freq_in, window_param, phase=0,
     for i in range(1, harmonics+1):
         if model:
             model += lmfit.Model(fft_shape, prefix=f'h{i}_', independent_vars=[
-                                 'frequencies', 'freq_in', 'window_param'])
+                                 'frequencies', 'freq_in', 'window_param'],
+                                 **fit_kws)
         else:
             model = lmfit.Model(fft_shape, prefix=f'h{i}_', independent_vars=[
-                                'frequencies', 'freq_in', 'window_param'])
+                                'frequencies', 'freq_in', 'window_param'],
+                                **fit_kws)
         params.add('h%i_harmonic' % i, value=i, vary=False)
         params.add('h%i_re_comp' % i, value=0)
         params.add('h%i_im_comp' % i, value=-1)
 
+    model_fit = model.fit(signal_fft, params=params, frequencies=frequencies,
+                          freq_in=freq_in, window_param=window_param)
+    return model_fit
+
+
+def phase_align(time, reference, signal, freq_in, window_param, phase=0,
+                harmonics=1, return_params=True, fit_kws=None):
+    r"""Adjusts a time-domain reference to a desired phase angle and aligns
+    a time-domain signal to the reference while maintaining phase coherence.
+
+    Parameters
+    ----------
+    time : np.ndarray
+        Array of the time sample points corresponding to reference and signal.
+    reference : np.ndarray
+        Array containing values of the reference data.
+    signal : np.ndarray
+        Array containing values of the time-domain signal to be aligned.
+    freq_in : float
+        Expected frequency to be found in reference and signal.
+    window_param : float
+        Defines decay length of window function. Corresponds to number of
+        waveforms at the signals frequency.
+    phase : float
+        Desired phase angle, in degrees, for adjusted reference.
+    harmonics : integer
+        Number of harmonics to analyze for phase adjustments.
+    fit_kws: dict, optional
+        Optional parameters to pass to the minimizer.
+
+    Returns
+    -------
+    sig : np.ndarray
+        Array of the time-domain signal after phase adjustment
+    sig_fit: lmfit.Model, optional
+        Model class object
+    """
+    Ns = np.size(time)
+    freqs = fft.fftshift(fft.fftfreq(Ns, time[1]))
+
+    # Get FFT of gaussian windowed (apodized) signals
+    ref_fft = get_windowed_fft(time, reference, freq_in, window_param)
+    sig_fft = get_windowed_fft(time, signal, freq_in, window_param)
+    del reference, signal
+
+    if fit_kws is None:
+        fit_kws = {}
+
     # Now fit both models. This can take a long time with large data files.
-    ref_fit = model.fit(ref_fft, params=params, frequencies=freqs,
-                        freq_in=freq_in, window_param=window_param)
-    sig_fit = model.fit(sig_fft, params=params, frequencies=freqs,
-                        freq_in=freq_in, window_param=window_param)
+    ref_fit = fit_windowed_fft(freqs, ref_fft, freq_in, window_param,
+                               harmonics=harmonics, fit_kws=fit_kws)
+    sig_fit = fit_windowed_fft(freqs, sig_fft, freq_in, window_param,
+                               harmonics=harmonics, fit_kws=fit_kws)
+    del ref_fft, sig_fft
 
     # Pull out magnitudes and phase angles of harmonics into a dict so
     # original info isn't overwritten
@@ -187,8 +249,10 @@ def phase_align(time, reference, signal, freq_in, window_param, phase=0,
         sig_fit.params[f'h{i}_im_comp'].value = \
             np.sin(sig_comps[f'ang_{i}'] + ang_adj * i) * sig_comps[f'mag_{i}']
 
-    sig = fft.ifft(fft.ifftshift(sig_fit.best_fit*(Ns*np.pi)))
-
+    sig = fft.ifft(fft.ifftshift(sig_fit.eval()*(Ns*np.pi)))
+    # Update data in lmfit.ModelResult so the data and best_fit results don't
+    # look wildly different.
+    sig_fit.data = get_windowed_fft(time, sig, freq_in, window_param)
     if return_params:
         return sig, sig_fit
     else:
@@ -211,7 +275,7 @@ def sub_mean(data):
 
 
 def gauss_window(signal, freq_in, time, window_param):
-    r"""Applies a gaussian windowing function to a time-domain signal
+    """Applies a gaussian windowing function to a time-domain signal
 
     Parameters
     ----------
@@ -221,7 +285,6 @@ def gauss_window(signal, freq_in, time, window_param):
         Fundamental frequency of input signal
     time : np.ndarray
         Array of timestamps corresponding to signal samples
-
     window_param : float
         Defines decay length of window function. Corresponds to number of
         waveforms at the signals frequency.
