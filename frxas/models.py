@@ -5,7 +5,7 @@ from lmfit import Parameters, fit_report
 
 
 def dataset_fun(params, i, x, fun):
-    r"""Calculate a function's lineshape from parameters for a single data set.
+    """Calculate a function's lineshape from parameters for a single data set.
 
     Parameters
     ----------
@@ -23,6 +23,7 @@ def dataset_fun(params, i, x, fun):
     np.ndarray
         Values from evaluating the callable function with the given data set
         parameters and independent variable array.
+
     """
     args = []
     for pname in params:
@@ -65,6 +66,7 @@ def objective_fun(params, x, data, fun):
     -------
     np.ndarray
         1-D array of residuals for the given model function.
+
     """
     resid = []
 
@@ -111,7 +113,6 @@ def calc_ao(aoo, po2, po2_ref):
 
     Notes
     -----
-
     This relies on knowing a reference therm. factor, `aoo`, at a reference
     pO2, `po2_ref`, and adjusts it for a given experimental pO2.
 
@@ -137,10 +138,8 @@ def calc_ao(aoo, po2, po2_ref):
 
 
 def chi_ideal(x, ao, ld, tg, f):
-    r"""Summarize the function in one line.
-
-    Function for dimensionless vacancy concentrations assuming ideal behavior
-    and overpotential control.
+    """Function for dimensionless vacancy concentrations assuming ideal
+    behavior and overpotential control.
 
     Parameters
     ----------
@@ -177,10 +176,10 @@ def chi_ideal(x, ao, ld, tg, f):
 
     References
     ----------
-
     .. [1] Y. Lu, C. Kreller, and S.B. Adler,
         Journal of The Electrochemical Society, 156, B513-B525 (2009)
         `doi:10.1149/1.3079337 <https://doi.org/10.1149/1.3079337>`_.
+
     """
     # After closing class docstring, there should be one blank line to
     # separate following codes (according to PEP257).
@@ -191,10 +190,8 @@ def chi_ideal(x, ao, ld, tg, f):
 
 
 def chi_amp(x, amp, ld, tg, f):
-    r"""Summarize the function in one line.
-
-    Function for dimensionless vacancy concentrations assuming ideal behavior
-    and overpotential control.
+    """Function for dimensionless vacancy concentrations assuming ideal
+    behavior and overpotential control.
 
     Parameters
     ----------
@@ -247,6 +244,7 @@ def chi_amp(x, amp, ld, tg, f):
 
 def save_fit_report(filename, fit, start_inds=None):
     """Function to save lmfit minimize results from `fit_report`.
+
     Parameters
     ----------
     filename: str
@@ -255,6 +253,7 @@ def save_fit_report(filename, fit, start_inds=None):
         Output from lmfit minimizer
     start_inds: array like
         Indices of starting positions for each fr-XAS profile.
+
     """
     f = open(filename, "w+")
     report = fit_report(fit)
@@ -265,6 +264,7 @@ def save_fit_report(filename, fit, start_inds=None):
 
 def load_fit_report(filename):
     """Extracts information from saved fit report into a `Parameters` object.
+
     Parameters
     ----------
     filename: str
@@ -275,6 +275,7 @@ def load_fit_report(filename):
         Object containing all parameter information from saved fit. Min and Max
         values are 20% lower and higher, respectively, than the estimated
         standard error from the fit, if available.
+
     """
     f = open(filename, mode='r')
     lines = f.readlines()

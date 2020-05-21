@@ -7,7 +7,7 @@ from . import time_domain
 
 
 def create_frxas_profile_hdf5(filename: str, gases: list, temp=700):
-    r""" Makes an HDF5 file to store data for fr-XAS profiles.
+    """Makes an HDF5 file to store data for fr-XAS profiles.
 
     Parameters
     ----------
@@ -50,7 +50,7 @@ def create_frxas_profile_hdf5(filename: str, gases: list, temp=700):
 
 
 def open_hdf5(filename: str):
-    r"""Opens existing hdf5 file containing frXAS data.
+    """Opens existing hdf5 file containing frXAS data.
 
     Parameters
     ----------
@@ -61,6 +61,7 @@ def open_hdf5(filename: str):
     -------
     f : :class:`~h5py.File`
         Class representing an HDF5 file.
+
     """
     try:
         f = h5py.File(filename + ".h5", "r+")
@@ -74,7 +75,7 @@ def open_hdf5(filename: str):
 
 
 def close_hdf5(filename: str):
-    r"""Closes specified hdf5 file.
+    """Closes specified hdf5 file.
 
     Parameters
     ----------
@@ -85,6 +86,7 @@ def close_hdf5(filename: str):
     -------
     f : :class:`~h5py.File`
         Class representing an HDF5 file.
+
     """
     try:
         f = h5py.File(filename + ".h5", "r+")
@@ -98,7 +100,7 @@ def close_hdf5(filename: str):
 
 
 def add_frxas_profile(file, gas, frequency, data):
-    r"""Adds data for a single gas and frequency experiment to existing file.
+    """Adds data for a single gas and frequency experiment to existing file.
 
     Parameters
     ----------
@@ -138,6 +140,7 @@ def add_frxas_profile(file, gas, frequency, data):
     The data is assumed to be organized where the first row is positions,
     the second row is real components of the X-ray signal, and the third row
     is imaginary components of the X-ray signal.
+
     """
     f = file
     group = str(gas)
@@ -172,13 +175,14 @@ def add_frxas_profile(file, gas, frequency, data):
 
 
 def print_data_shapes(file):
-    r"""Prints the name of all data sets within each group of the HDF5 file.
+    """Prints the name of all data sets within each group of the HDF5 file.
 
     Parameters
     ----------
     file : :class:`~h5py.File` or str
         Class representing an HDF5 file. If `file` is a string, it will attempt
         to open an HDF5 file with that name.
+
     """
     f = file
     try:
@@ -197,13 +201,14 @@ def print_data_shapes(file):
 
 
 def get_gas_condition(file):
-    r"""Retrieves the gas conditions of all HDF5 file.
+    """Retrieves the gas conditions of all HDF5 file.
 
     Parameters
     ----------
     file : :class:`~h5py.File` or str
         Class representing an HDF5 file. If `file` is a string, it will attempt
         to open an HDF5 file with that name.
+
     """
     gas = []
 
@@ -243,6 +248,7 @@ def adjust_dataset(data, start_index):
     -------
     np.ndarray
         Array of data truncated to start_index, has shape m x (x - start_index)
+
     """
     rows, cols = data.shape
     data_adj = np.zeros((rows, cols-start_index))
@@ -268,6 +274,7 @@ def get_group_datasets(obj, start_indices=None):
     dict
         Dictionary of data stored in an HDF5 group, including metadata such as
         specified gas condition, and frequencies applied for each dataset.
+
     """
     if start_indices is None:
         start_indices = []
@@ -390,6 +397,7 @@ def save_time_domain_fit(filename: str, fit_model):
     fit_model : lmfit.model.ModelResult
         The object returned by lmfit.Model.fit() containing statistics, data,
         and best fit parameters.
+
     """
     try:
         if type(filename) == str:
@@ -485,6 +493,7 @@ def save_time_domain_fit(filename: str, fit_model):
 
 def load_time_domain_fit(filename: str):
     """Loads and unpacks data in hdf5 file stored by save_time_domain_fit().
+
     Parameters
     ----------
     filename : str
@@ -494,6 +503,7 @@ def load_time_domain_fit(filename: str):
     fit_model : lmfit.model.ModelResult
         The object returned by lmfit.Model.fit() containing statistics, data,
         and best fit parameters.
+
     """
     f = open_hdf5(filename)
 

@@ -58,7 +58,7 @@ def extract_data(direc, point, amplitude, file, start=0, end=-1, irr=100,
 
 
 def freq_bin(freq_in, frequencies, harmonic):
-    r"""Finds the index of the FFT bin for an input frequency.
+    """Finds the index of the FFT bin for an input frequency.
 
     Parameters
     ----------
@@ -76,6 +76,7 @@ def freq_bin(freq_in, frequencies, harmonic):
     bins: np.ndarray
         Array of shape(harmonic, 2) containing indices for the fft bins of the
         desired harmonic frequencies.
+
     """
     bins = np.ones((harmonic, 2), dtype=int)
     for i in range(0, harmonic):
@@ -91,6 +92,7 @@ def freq_bin(freq_in, frequencies, harmonic):
 
 def get_windowed_fft(time, signal, freq_in, window_param):
     """Applies gaussian window to signal and calculates the complex FFT.
+
     Parameters
     ----------
     time : np.ndarray
@@ -106,6 +108,7 @@ def get_windowed_fft(time, signal, freq_in, window_param):
     -------
     sig_win_fft: np.ndarray
         Complex FFT of signal with window function applied.
+
     """
     Ns = np.size(time)
     sig_win = gauss_window(signal, freq_in, time, window_param)
@@ -115,7 +118,8 @@ def get_windowed_fft(time, signal, freq_in, window_param):
 
 def fit_windowed_fft(frequencies, signal_fft, freq_in, window_param,
                      harmonics=1, fit_kws=None):
-    """
+    """Fits the windowed fft.
+
     Parameters
     ----------
     frequencies: np.ndarray
@@ -137,6 +141,7 @@ def fit_windowed_fft(frequencies, signal_fft, freq_in, window_param,
     model_fit: lmfit.ModelResult
         ModelResult class object with best fit parameters and various goodness-
         of-fit statistics
+
     """
     # Set up lmfit parameters and model classes
     params = lmfit.Parameters()
@@ -164,7 +169,7 @@ def fit_windowed_fft(frequencies, signal_fft, freq_in, window_param,
 
 def phase_align(time, reference, signal, freq_in, window_param, phase=0,
                 harmonics=1, return_params=True, fit_kws=None):
-    r"""Adjusts a time-domain reference to a desired phase angle and aligns
+    """Adjusts a time-domain reference to a desired phase angle and aligns
     a time-domain signal to the reference while maintaining phase coherence.
 
     Parameters
@@ -193,6 +198,7 @@ def phase_align(time, reference, signal, freq_in, window_param, phase=0,
         Array of the time-domain signal after phase adjustment
     sig_fit: lmfit.Model, optional
         Model class object
+
     """
     Ns = np.size(time)
     freqs = fft.fftshift(fft.fftfreq(Ns, time[1]))
@@ -275,7 +281,7 @@ def sub_mean(data):
 
 
 def gauss_window(signal, freq_in, time, window_param):
-    """Applies a gaussian windowing function to a time-domain signal
+    """Applies a gaussian windowing function to a time-domain signal.
 
     Parameters
     ----------
@@ -293,6 +299,7 @@ def gauss_window(signal, freq_in, time, window_param):
     -------
     win_sig : np.ndarray
         Time domain array of signal with window function applied.
+
     """
     f = freq_in
     t = time
@@ -305,7 +312,7 @@ def gauss_window(signal, freq_in, time, window_param):
 
 
 def gauss_fft(frequencies, freq_in, window_param, harmonic=1):
-    r""" Calculates the gaussian lineshape for FFT fitting
+    """ Calculates the gaussian lineshape for FFT fitting
 
     Parameters
     ----------
@@ -324,6 +331,7 @@ def gauss_fft(frequencies, freq_in, window_param, harmonic=1):
     -------
     g_k : np.ndarray
         Array for the gaussian lineshape in an FFT
+
     """
 
     w = 2 * np.pi * frequencies
@@ -342,7 +350,7 @@ def gauss_fft(frequencies, freq_in, window_param, harmonic=1):
 
 
 def dawson_fft(frequencies, freq_in, window_param, harmonic=1):
-    """ Calculates the dawson function lineshape for FFT fitting
+    """ Calculates the dawson function lineshape for FFT fitting.
 
     Parameters
     ----------
@@ -362,6 +370,7 @@ def dawson_fft(frequencies, freq_in, window_param, harmonic=1):
     -------
     d_k : np.ndarray
         Array for the dawson function lineshape in an FFT
+
     """
 
     w = 2 * np.pi * frequencies
@@ -381,7 +390,7 @@ def dawson_fft(frequencies, freq_in, window_param, harmonic=1):
 
 def fft_shape(frequencies, freq_in, window_param, harmonic=1, re_comp=1,
               im_comp=1):
-    r""" Calculates the lineshape of a gaussian windowed signal for fitting
+    r""" Calculates the lineshape of a gaussian windowed signal for fitting.
 
     Parameters
     ----------
@@ -477,6 +486,7 @@ def fft_shape(frequencies, freq_in, window_param, harmonic=1, re_comp=1,
     Electrochimia Acta, 51, 1389-1402 (2006)
     `doi:10.1016/j.electacta.2005.02.109
     <https://doi.org/10.1016/j.electacta.2005.02.109>`_.
+
     """
 
     f = frequencies

@@ -20,6 +20,7 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
     Returns
     -------
     axes : matplotlib.axes.Axes
+
     """
     try:
         marker = kwargs.pop('marker')
