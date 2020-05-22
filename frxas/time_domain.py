@@ -153,11 +153,11 @@ def fit_windowed_fft(frequencies, signal_fft, freq_in, window_param,
         if model:
             model += lmfit.Model(fft_shape, prefix=f'h{i}_', independent_vars=[
                                  'frequencies', 'freq_in', 'window_param'],
-                                 **fit_kws)
+                                 fit_kws=fit_kws)
         else:
             model = lmfit.Model(fft_shape, prefix=f'h{i}_', independent_vars=[
                                 'frequencies', 'freq_in', 'window_param'],
-                                **fit_kws)
+                                fit_kws=fit_kws)
         params.add('h%i_harmonic' % i, value=i, vary=False)
         params.add('h%i_re_comp' % i, value=0)
         params.add('h%i_im_comp' % i, value=-1)

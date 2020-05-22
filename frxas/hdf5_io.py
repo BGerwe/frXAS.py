@@ -50,7 +50,7 @@ def create_frxas_profile_hdf5(filename: str, gases: list, temp=700):
     return
 
 
-def open_hdf5(filename: str):
+def open_hdf5(filename: str, mode="r+"):
     """Opens existing hdf5 file containing frXAS data.
 
     Parameters
@@ -65,7 +65,7 @@ def open_hdf5(filename: str):
 
     """
     try:
-        f = h5py.File(filename + ".h5", "r+")
+        f = h5py.File(filename + ".h5", mode)
 
     except TypeError:
         print("Error encountered. Make sure filename is a valid path for an",
@@ -389,33 +389,24 @@ def unpack_data(hdf_file, kind='data_adj'):
     return xs, data, frequencies, gas, sizes
 
 
-def save_time_domain_fit(filename: str, fit_model):
-    """Store most important information from `lmfit.ModelResult` in hdf5 file.
+def save_lmfit_fit_statistics(hdf_file, fit_model):
+    """Store fit statistics from `lmfit.ModelResult` in open hdf5 file.
+
     Parameters
     ----------
-    filename : str
-        File path name excluding ".h5" extension.
+    hdf_file : :class:`~h5py.File`
+        Class representing an HDF5 file.
     fit_model : lmfit.model.ModelResult
         The object returned by lmfit.Model.fit() containing statistics, data,
         and best fit parameters.
 
     """
-    try:
-        if type(filename) == str:
-            f = h5py.File(filename + ".h5", "a")
-        else:
-            print(filename + " is not a string. File not created.")
-            return
-    except TypeError:
-        print("An error occured while creating the file")
-        return
-
+    f = hdf_file
     try:
         f.create_group("Fit Statistics")
-        f.create_group("Variables")
-        f.create_group("Independent Variables")
     except ValueError:
         pass
+
     # Adding these parts as attributes seems easier than making into a dataset
     fit_stats = f["Fit Statistics"]
     fit_stats.attrs['Fitting Method'] = fit_model.method
@@ -441,6 +432,26 @@ def save_time_domain_fit(filename: str, fit_model):
 
     fit_stats.attrs['Model Functions'] = fcns
     fit_stats.attrs['Model Prefixes'] = prefixes
+    return
+
+
+def save_lmfit_ind_varis(hdf_file, fit_model):
+    """Store independent variables from `lmfit.ModelResult` in open hdf5 file.
+
+    Parameters
+    ----------
+    hdf_file : :class:`~h5py.File`
+        Class representing an HDF5 file.
+    fit_model : lmfit.model.ModelResult
+        The object returned by lmfit.Model.fit() containing statistics, data,
+        and best fit parameters.
+
+    """
+    f = hdf_file
+    try:
+        f.create_group("Independent Variables")
+    except ValueError:
+        pass
 
     # Store independent variables: frequencies, freq_in, window_param
     # Using datasets since frequencies will be too large for storing as attr
@@ -455,16 +466,37 @@ def save_time_domain_fit(filename: str, fit_model):
         except (KeyError, RuntimeError):
             print(f'Data entry for {kw} was unsuccessful. Check data',
                   f'type of {kw}')
+    return
 
+
+def save_lmfit_varis(hdf_file, fit_model):
+    """Store variables from `lmfit.ModelResult` in open hdf5 file.
+
+    Parameters
+    ----------
+    hdf_file : :class:`~h5py.File`
+        Class representing an HDF5 file.
+    fit_model : lmfit.model.ModelResult
+        The object returned by lmfit.Model.fit() containing statistics, data,
+        and best fit parameters.
+
+    """
+    f = hdf_file
+    try:
+        f.create_group("Variables")
+    except ValueError:
+        pass
     # Store variables AKA parameters from lmfit model
     varis = f['Variables']
 
-    param_info = np.zeros((len(fit_model.params), 4))
+    param_info = np.zeros((len(fit_model.params), 6))
     param_names = []
     for i, kw in enumerate(fit_model.params.keys()):
         param_names.append(kw)
         param = np.array([fit_model.params[kw].value, fit_model.params[kw].min,
-                         fit_model.params[kw].max, fit_model.params[kw].vary])
+                         fit_model.params[kw].max, fit_model.params[kw].vary,
+                         fit_model.params[kw].stderr,
+                         fit_model.params[kw].init_value])
         param_info[i, :] = param
 
     # Store names as attribute because HDF doesn't play nice with arrays
@@ -475,11 +507,11 @@ def save_time_domain_fit(filename: str, fit_model):
             del varis['Parameter Info']
             varis.create_dataset('Parameter Info', data=np.array(param_info))
             varis['Parameter Info'].attrs['Values Order'] = \
-                'Value, Min, Max, Varies'
+                ['Value', 'Min', 'Max', 'Varies', 'Std Err', 'Initial Value']
         else:
             varis.create_dataset('Parameter Info', data=np.array(param_info))
             varis['Parameter Info'].attrs['Values Order'] = \
-                'Value, Min, Max, Varies'
+                ['Value', 'Min', 'Max', 'Varies', 'Std Err', 'Initial Value']
         if 'Data' in varis.keys():
             del varis['Data']
             varis.create_dataset('Data', data=fit_model.data)
@@ -488,17 +520,40 @@ def save_time_domain_fit(filename: str, fit_model):
     except (KeyError, RuntimeError):
         print(f'Parameter names and value entry unsuccessful.')
 
-    f.close()
     return
 
 
-def load_time_domain_fit(filename: str):
-    """Loads and unpacks data in hdf5 file stored by save_time_domain_fit().
-
+def save_time_domain_fit(filename: str, fit_model, save_data=False):
+    """Store most important information from `lmfit.ModelResult` in hdf5 file.
     Parameters
     ----------
     filename : str
         File path name excluding ".h5" extension.
+    fit_model : lmfit.model.ModelResult
+        The object returned by lmfit.Model.fit() containing statistics, data,
+        and best fit parameters.
+    save_data : bool, optional
+        Option to save data used for fitting into file. May result in large
+        file sizes.
+
+    """
+    f = open_hdf5(filename, mode="a")
+
+    save_lmfit_fit_statistics(f, fit_model)
+    save_lmfit_ind_varis(f, fit_model)
+    save_lmfit_varis(f, fit_model)
+
+    f.close()
+    return
+
+
+def load_lmfit_fit_statistics(hdf_file):
+    """Loads and unpacks data in hdf5 file stored by save_time_domain_fit().
+
+    Parameters
+    ----------
+    hdf_file : :class:`~h5py.File`
+        Class representing an HDF5 file.
     Returns
     -------
     fit_model : lmfit.model.ModelResult
@@ -506,7 +561,7 @@ def load_time_domain_fit(filename: str):
         and best fit parameters.
 
     """
-    f = open_hdf5(filename)
+    f = hdf_file
 
     fit_stats = f['Fit Statistics']
     fcns = fit_stats.attrs.get('Model Functions')
@@ -538,19 +593,84 @@ def load_time_domain_fit(filename: str):
     fit_model.aic = fit_stats.attrs['Akaike Info Criteria']
     fit_model.bic = fit_stats.attrs['Bayesian Info Criteria']
 
+    return fit_model
+
+
+def load_lmfit_ind_varis(hdf_file, fit_model):
+    """Loads and unpacks data in hdf5 file stored by save_time_domain_fit().
+
+    Parameters
+    ----------
+    hdf_file : :class:`~h5py.File`
+        Class representing an HDF5 file.
+    fit_model : lmfit.model.ModelResult
+        The object returned by lmfit.Model.fit() containing statistics, data,
+        and best fit parameters.
+
+    """
+    f = hdf_file
     # Load in independent variables
     ind_varis = {}
     for name, val in f['Independent Variables'].items():
         ind_varis[name] = np.array(val)
     fit_model.userkws = ind_varis
 
+    return
+
+
+def load_lmfit_varis(hdf_file, fit_model):
+    """Loads and unpacks data in hdf5 file stored by save_time_domain_fit().
+
+    Parameters
+    ----------
+    hdf_file : :class:`~h5py.File`
+        Class representing an HDF5 file.
+    fit_model : lmfit.model.ModelResult
+        The object returned by lmfit.Model.fit() containing statistics, data,
+        and best fit parameters.
+
+    """
     # Load in parameters
+    f = hdf_file
+    params = lmfit.Parameters()
     varis = f['Variables']
     for name, info in zip(varis.attrs['Parameter Names'],
                           varis['Parameter Info']):
         params.add(name, value=info[0], min=info[1], max=info[2], vary=info[3])
+        # For compatibility with previous version of saving lmfit
+        if len(info) == 6:
+            params[name].stderr = info[4]
+            params[name].init_value = info[5]
+            # If stderr exists for one parameters, uncertainties were evaluated
+            # So turn off warning
+            if info[4]:
+                fit_model.errorbars = True
+
     fit_model.params = params
     fit_model.data = np.array(varis['Data'])
+
+    return
+
+
+def load_time_domain_fit(filename: str):
+    """Loads and unpacks data in hdf5 file stored by save_time_domain_fit().
+
+    Parameters
+    ----------
+    filename : str
+        File path name excluding ".h5" extension.
+    Returns
+    -------
+    fit_model : lmfit.model.ModelResult
+        The object returned by lmfit.Model.fit() containing statistics, data,
+        and best fit parameters.
+
+    """
+    f = open_hdf5(filename)
+
+    fit_model = load_lmfit_fit_statistics(f)
+    load_lmfit_ind_varis(f, fit_model)
+    load_lmfit_varis(f, fit_model)
 
     f.close()
     return fit_model
