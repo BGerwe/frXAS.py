@@ -100,7 +100,7 @@ def close_hdf5(filename: str):
     return
 
 
-def add_frxas_profile(file, gas, frequency, data):
+def add_frxas_profile(file, gas, frequency, positions, data, harmonic=1):
     """Adds data for a single gas and frequency experiment to existing file.
 
     Parameters
@@ -113,8 +113,12 @@ def add_frxas_profile(file, gas, frequency, data):
     frequency : str or int
         Frequency of experimentally applied voltage perturbation for data seta
         being added.
+    positions : np.ndarray
+        Array of measurement positions for data.
     data : np.ndarray
         Array of frXAS data being added.
+    harmonic : int
+        Index of harmonic for data added.
 
     Notes
     -----
@@ -125,15 +129,16 @@ def add_frxas_profile(file, gas, frequency, data):
         file
         |--- gas 1
         |   |--- frequency 1
+        |   |   |--- harmonic 1
+        |   |   |--- harmonic 2
+        |   |   ...
         |   |--- frequency 2
         |   ...
         |   |--- frequency n
         |--- gas 2
-        |   |--- frequency 1
         |   ...
         ...
         |--- gas n
-        |   |--- frequency 1
         |   ...
 
     Use :print_data_shapes: to retrieve existing structure in HDF5 file.
@@ -143,10 +148,14 @@ def add_frxas_profile(file, gas, frequency, data):
     is imaginary components of the X-ray signal.
 
     """
+    if data.shape[-1] != positions.shape[-1]:
+        raise ValueError('Data and position shapes don\'t match')
+
     f = file
     group = str(gas)
     # frequency is used both to find existing data and to label new data
-    dset = str(frequency) + '_Hz'
+    subgroup = str(frequency) + '_Hz'
+    dset = 'Harmonic ' + str(harmonic)
 
     try:
         f.keys()
@@ -155,17 +164,22 @@ def add_frxas_profile(file, gas, frequency, data):
         f = open_hdf5(file)
 
     try:
-        if dset in f[group].keys():
-            # delete existing data and replace in case length changes
-            del f[group][dset]
-            f[group].create_dataset(dset, data=data)
-        else:
-            f[group].create_dataset(dset, data=data)
+        if subgroup not in f[group].keys():
+            f[group].create_group(subgroup)
 
+        if dset in f[group][subgroup].keys():
+            # delete existing data and replace in case length changes
+            del f[group][subgroup][dset]
+            f[group][subgroup].create_dataset(dset, data=data)
+        else:
+            f[group][subgroup].create_dataset(dset, data=data)
+
+        # Positions will be shared across all harmonics within each frequency
+        f[group][subgroup].attrs['Positions'] = positions
         # Not really necessary, but adding exp. conditions as attributes
-        f[group][dset].attrs['Frequency'] = frequency
+        f[group][subgroup].attrs['Frequency'] = frequency
         print(float(gas.split('%')[0]) / 100)
-        f[group][dset].attrs['Gas'] = float(gas.split('%')[0]) / 100
+        f[group][subgroup].attrs['Gas'] = float(gas.split('%')[0]) / 100
         f[group].attrs['Gas'] = float(gas.split('%')[0]) / 100
 
     except (KeyError, TypeError):
@@ -192,10 +206,13 @@ def print_data_shapes(file):
     except AttributeError:
         f = open_hdf5(file)
 
+    # Looking through Gas condition groups
     for group in f.keys():
         if f[group].keys():
+            # Looking through frequencies groups
             for dset in f[group].keys():
-                print(f[group][dset].name, f[group][dset].shape)
+                print(f[group][dset].name,
+                      f[group][dset].attrs.get('Positions').shape)
         else:
             print(f[group], ' is empty.')
     return
@@ -260,15 +277,17 @@ def adjust_dataset(data, start_index):
     return data_adj
 
 
-def get_group_datasets(obj, start_indices=None):
+def get_group_datasets(subgroup, harmonic=1, start_index=None):
     """Retrieves all datasets stored in one gas group.
 
     Parameters
     ----------
-    obj : :class:`~h5py.File` group reference
+    subgroup : :class:`~h5py.File` group reference
         Reference to a group of an HDF5 file, e.g. file['1%_O2'].
-    start_indices : list of ints
-        List of indices where the fr-XAS profile should begin
+    harmonic : int
+        Index of harmonic data to retrieve.
+    start_index : int
+        Index where the fr-XAS profile should begin
 
     Returns
     -------
@@ -277,51 +296,41 @@ def get_group_datasets(obj, start_indices=None):
         specified gas condition, and frequencies applied for each dataset.
 
     """
-    if start_indices is None:
-        start_indices = []
 
-    gas = obj.attrs['Gas']
-    starts = start_indices
-
-    if start_indices:
+    if start_index:
         start_adj = True
     else:
         start_adj = False
+    start = start_index
 
-    frequencies = []
-    data = []
-    data_adj = []
+    frequency = subgroup.attrs['Frequency']
 
-    # Cycling through each data set stored in the HDF5 file.
-    for i, dset in enumerate(obj.keys()):
-        frequency = obj[dset].attrs['Frequency']
+    try:
+        dset = subgroup[f'Harmonic {harmonic}']
+    except KeyError:
+        print(f'Harmonic {harmonic} not found in {subgroup}')
+        return frequency, [], [], []
+
     # Start indices are used in passed to the function or previously stored
     # with each data set. Otherwise, assume starting at beginning. Makes new
     # array to store truncated data set.
-        if start_adj:
-            start = starts[i]
-            obj[dset].attrs['Start_Index'] = start
-            dat = np.array(obj[dset])
-            dat_adj = adjust_dataset(dat, start)
-        else:
-            try:
-                start = obj[dset].attrs['Start_Index']
-            except KeyError:
-                start = 0
+    if start_adj:
+        subgroup.attrs['Start_Index'] = start
+        data = np.array(dset)
+        data_adj = adjust_dataset(data, start)
+    else:
+        try:
+            start = subgroup.attrs['Start_Index']
+        except KeyError:
+            start = 0
 
-            dat = np.array(obj[dset])
-            dat_adj = adjust_dataset(dat, start)
-            starts.append(start)
+        data = np.array(dset)
+        data_adj = adjust_dataset(data, start)
 
-        frequencies.append(frequency)
-        data.append(dat)
-        data_adj.append(dat_adj)
-
-    return dict([('gas', gas), ('frequencies', frequencies),
-                 ('starts', starts), ('data', data), ('data_adj', data_adj)])
+    return frequency, start, data, data_adj
 
 
-def get_all_datasets(file, start_indices=[]):
+def get_all_datasets(file, harmonic=1, start_indices=[]):
     """Retrieves all datasets stored in an HDF5 file.
 
     Parameters
@@ -329,6 +338,8 @@ def get_all_datasets(file, start_indices=[]):
     file : :class:`~h5py.File` or str
         Class representing an HDF5 file. If `file` is a string, it will attempt
         to open an HDF5 file with that name.
+    harmonic : int
+        Index of harmonic data to retrieve.
     start_indices : list of lists
         Should have one entry of integer type for each dataset stored in HDF5.
 
@@ -349,17 +360,42 @@ def get_all_datasets(file, start_indices=[]):
     except AttributeError:
         f = open_hdf5(file)
 
-    data = []
+    data_list = []
 
-    for i, group in enumerate(f.keys()):
-        if f[group].keys() and len(start_indices) > 0:
-            data.append(get_group_datasets(f[group], start_indices[i]))
-        elif f[group].keys() and len(start_indices) == 0:
-            data.append(get_group_datasets(f[group]))
-        else:
-            print(f[group], ' is empty.')
+    for i, key in enumerate(f):
+        group = f[key]
+        data_dict = {}
+        data_dict['gas'] = group.attrs.get('Gas')
 
-    return data
+        # Make lists of all info within a gass condition
+        frequencies, starts, data, data_adj, positions = [], [], [], [], []
+        for j, subgroup in enumerate(group.keys()):
+            if group[subgroup].keys() and len(start_indices) > 0:
+                position = group[subgroup].attrs.get('Positions')
+                frequency, start, dat, dat_adj = \
+                    get_group_datasets(group[subgroup], harmonic=harmonic,
+                                       start_index=start_indices[i][j])
+            elif group[subgroup].keys() and len(start_indices) == 0:
+                position = group[subgroup].attrs.get('Positions')
+                frequency, start, dat, dat_adj = \
+                    get_group_datasets(group[subgroup], harmonic=harmonic)
+            else:
+                print(group[subgroup], ' is empty.')
+                continue
+            frequencies.append(frequency)
+            starts.append(start)
+            data.append(dat)
+            data_adj.append(dat_adj)
+            positions.append(position)
+
+        data_dict['frequencies'] = frequencies
+        data_dict['starts'] = starts
+        data_dict['data'] = data
+        data_dict['data_adj'] = data_adj
+        data_dict['positions'] = positions
+        data_list.append(data_dict)
+
+    return data_list
 
 
 def unpack_data(hdf_file, kind='data_adj'):
