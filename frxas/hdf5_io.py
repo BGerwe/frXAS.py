@@ -250,14 +250,16 @@ def get_gas_condition(file):
     return gas
 
 
-def adjust_dataset(data, start_index):
+def adjust_dataset(data, positions, start_index):
     """Truncates data sets to begin at `start_index` and makes the position
     values relative to the `start_index` position.
 
     Parameters
     ----------
     data : np.ndarray
-        Array, usually of shape 3 x n, of fr-XAS profile data.
+        Array, usually of shape 2 x n, of fr-XAS profile data.
+    positions : np.ndarray
+        Possss
     start_index : int
         Index that data should be truncated to begin at, e.g. data point for
         the edge of the electrode gate in patterned SOFC samples.
@@ -268,13 +270,15 @@ def adjust_dataset(data, start_index):
         Array of data truncated to start_index, has shape m x (x - start_index)
 
     """
+    pos = positions
     rows, cols = data.shape
     data_adj = np.zeros((rows, cols-start_index))
     data_adj[:rows, :] = data[:, start_index:].copy()
     # Make positions in first row relative to first value
-    data_adj[0, :] = data_adj[0, :] - data_adj[0, 0]
+    pos_adj = pos[start_index:].copy()
+    pos_adj = pos_adj - pos_adj[0]
 
-    return data_adj
+    return data_adj, pos_adj
 
 
 def get_group_datasets(subgroup, harmonic=1, start_index=None):
@@ -296,15 +300,15 @@ def get_group_datasets(subgroup, harmonic=1, start_index=None):
         specified gas condition, and frequencies applied for each dataset.
 
     """
-
-    if start_index:
-        start_adj = True
-    else:
-        start_adj = False
     start = start_index
+    if start is None:
+        start_adj = False
+        start = 0
+    else:
+        start_adj = True
 
     frequency = subgroup.attrs['Frequency']
-
+    pos = subgroup.attrs.get('Positions')
     try:
         dset = subgroup[f'Harmonic {harmonic}']
     except KeyError:
@@ -317,7 +321,7 @@ def get_group_datasets(subgroup, harmonic=1, start_index=None):
     if start_adj:
         subgroup.attrs['Start_Index'] = start
         data = np.array(dset)
-        data_adj = adjust_dataset(data, start)
+        data_adj, pos_adj = adjust_dataset(data, pos, start)
     else:
         try:
             start = subgroup.attrs['Start_Index']
@@ -325,9 +329,9 @@ def get_group_datasets(subgroup, harmonic=1, start_index=None):
             start = 0
 
         data = np.array(dset)
-        data_adj = adjust_dataset(data, start)
+        data_adj, pos_adj = adjust_dataset(data, pos, start)
 
-    return frequency, start, data, data_adj
+    return frequency, start, data, data_adj, pos, pos_adj
 
 
 def get_all_datasets(file, harmonic=1, start_indices=[]):
@@ -368,16 +372,15 @@ def get_all_datasets(file, harmonic=1, start_indices=[]):
         data_dict['gas'] = group.attrs.get('Gas')
 
         # Make lists of all info within a gass condition
-        frequencies, starts, data, data_adj, positions = [], [], [], [], []
+        frequencies, starts, data, data_adj = [], [], [], []
+        posi, posi_adj = [], []
         for j, subgroup in enumerate(group.keys()):
             if group[subgroup].keys() and len(start_indices) > 0:
-                position = group[subgroup].attrs.get('Positions')
-                frequency, start, dat, dat_adj = \
+                frequency, start, dat, dat_adj, pos, pos_adj = \
                     get_group_datasets(group[subgroup], harmonic=harmonic,
                                        start_index=start_indices[i][j])
             elif group[subgroup].keys() and len(start_indices) == 0:
-                position = group[subgroup].attrs.get('Positions')
-                frequency, start, dat, dat_adj = \
+                frequency, start, dat, dat_adj, pos, pos_adj = \
                     get_group_datasets(group[subgroup], harmonic=harmonic)
             else:
                 print(group[subgroup], ' is empty.')
@@ -386,28 +389,43 @@ def get_all_datasets(file, harmonic=1, start_indices=[]):
             starts.append(start)
             data.append(dat)
             data_adj.append(dat_adj)
-            positions.append(position)
+            posi.append(pos)
+            posi_adj.append(pos_adj)
 
         data_dict['frequencies'] = frequencies
         data_dict['starts'] = starts
         data_dict['data'] = data
         data_dict['data_adj'] = data_adj
-        data_dict['positions'] = positions
+        data_dict['positions'] = posi
+        data_dict['positions_adj'] = posi_adj
         data_list.append(data_dict)
 
     return data_list
 
 
-def unpack_data(hdf_file, kind='data_adj'):
+def unpack_data(data_dict, kind='adj'):
     """
+    data_dict : dict
+        Contains all data of frxas profiles stored in hdf5 file.
+    kind : str
+        Options are 'raw' for unmodified data or 'adj' for arrays starting at
+        specified index
     """
     xs, data, freqs, gas, sizes = [], [], [], [], []
 
-    for group in hdf_file:
+    if kind == 'adj':
+        kind = '_adj'
+    elif kind == 'raw':
+        kind = ''
+    else:
+        raise ValueError(f"Invalid `kind` selection. Valid choices are \'adj\' \
+                         or \'raw\', but {kind} was provided.")
+
+    for group in data_dict:
         x, dat = [], []
-        for dset in group[kind]:
-            x.append(np.array(dset[0]))
-            dat.append(np.array(dset[1] + 1j * dset[2]))
+        x = group[f'positions{kind}']
+        for dset in group[f'data{kind}']:
+            dat.append(np.array(dset[0] + 1j * dset[1]))
             gas.append(group['gas'])
         # Adding individual data sets to list, sorted by frequency
         xs.append([a for _, a in sorted(zip(group['frequencies'], x))])
