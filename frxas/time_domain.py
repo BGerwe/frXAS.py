@@ -13,27 +13,34 @@ def sort_files(all_files):
     return int(all_files.split('\\R')[-1][2:-4])
 
 
-def extract_data(direc, point, amplitude, file, start=0, end=-1, irr=100,
-                 xray_disp=True, xray_raw=False):
+def extract_data(file_direc, match_str, start=0, end=-1, irr=100,
+                 xray_disp=True, xray_raw=False, skip_head=1,
+                 sort_func=sort_files):
     """
     """
 
-    all_files = glob.glob(os.path.join(direc + point + amplitude + file +
-                                       ' [0-9][0-9][0-9].txt'))
-    data = np.array(read_csv(all_files[0], delimiter='\t', header=None,
-                             skiprows=1))
+    all_files = glob.glob(os.path.join(file_direc + match_str))
+    all_files.sort(key=sort_func)
 
-    t = data[:, 0]
-    all_files.sort(key=sort_files)
+    if len(all_files[start:end]) == 0:
+        print(f'No files in list with start={start} and end={end}, please',
+              ' extend range')
+        return
 
-    for file in all_files[start:end]:
-        dum = np.array(read_csv(file, delimiter='\t', header=None,
-                                skiprows=1))
-        data = np.append(data, dum, axis=0)
+    for i, file in enumerate(all_files[start:end]):
+        if i == start:
+            data = np.array(read_csv(file, delimiter='\t', header=None,
+                                     skiprows=skip_head))
+            t = data[:, 0]
+        else:
+            dum = np.array(read_csv(file, delimiter='\t', header=None,
+                                    skiprows=skip_head))
+            data = np.append(data, dum, axis=0)
 
-        # Avoid repeating time point where t=0 at the beginning of each file
-        t = np.append(t, t[-1] + t[1])
-        t = np.append(t, t[-1] + dum[1:, 0])
+            # Avoid repeating time point where t=0 at the beginning of each
+            # file
+            t = np.append(t, t[-1] + t[1])
+            t = np.append(t, t[-1] + dum[1:, 0])
 
     # Subtract average to remove DC component from signals. The X-ray signal
     # may still have a DC component from beam intensity drifts during
