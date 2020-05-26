@@ -313,7 +313,7 @@ def get_group_datasets(subgroup, harmonic=1, start_index=None):
         dset = subgroup[f'Harmonic {harmonic}']
     except KeyError:
         print(f'Harmonic {harmonic} not found in {subgroup}')
-        return frequency, [], [], []
+        return frequency, [], [], [], [], []
 
     # Start indices are used in passed to the function or previously stored
     # with each data set. Otherwise, assume starting at beginning. Makes new

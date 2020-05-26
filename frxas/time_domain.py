@@ -9,6 +9,10 @@ from numpy import fft
 from scipy.special import dawsn
 
 
+def sort_files(all_files):
+    return int(all_files.split('\\R')[-1][2:-4])
+
+
 def extract_data(direc, point, amplitude, file, start=0, end=-1, irr=100,
                  xray_disp=True, xray_raw=False):
     """
@@ -20,6 +24,7 @@ def extract_data(direc, point, amplitude, file, start=0, end=-1, irr=100,
                              skiprows=1))
 
     t = data[:, 0]
+    all_files.sort(key=sort_files)
 
     for file in all_files[start:end]:
         dum = np.array(read_csv(file, delimiter='\t', header=None,
