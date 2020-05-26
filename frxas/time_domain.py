@@ -161,7 +161,7 @@ def fit_windowed_fft(frequencies, signal_fft, freq_in, window_param,
     # Change range to start from 0 to capture DC behavior, which is nominally
     # subtracted, but may be unavoidable in X-ray data from changing incident
     # beam flux. Voltage and current shouldn't have significant DC components.
-    for i in range(1, harmonics+1):
+    for i in range(0, harmonics+1):
         if model:
             model += lmfit.Model(fft_shape, prefix=f'h{i}_', independent_vars=[
                                  'frequencies', 'freq_in', 'window_param'],
