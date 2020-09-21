@@ -523,7 +523,7 @@ def save_lmfit_ind_varis(hdf_file, fit_model):
     return
 
 
-def save_lmfit_varis(hdf_file, fit_model):
+def save_lmfit_varis(hdf_file, fit_model, save_data):
     """Store variables from `lmfit.ModelResult` in open hdf5 file.
 
     Parameters
@@ -566,13 +566,14 @@ def save_lmfit_varis(hdf_file, fit_model):
             varis.create_dataset('Parameter Info', data=np.array(param_info))
             varis['Parameter Info'].attrs['Values Order'] = \
                 ['Value', 'Min', 'Max', 'Varies', 'Std Err', 'Initial Value']
-        if 'Data' in varis.keys():
-            del varis['Data']
-            varis.create_dataset('Data', data=fit_model.data)
-        else:
-            varis.create_dataset('Data', data=fit_model.data)
+        if save_data:
+            if 'Data' in varis.keys():
+                del varis['Data']
+                varis.create_dataset('Data', data=fit_model.data)
+            else:
+                varis.create_dataset('Data', data=fit_model.data)
     except (KeyError, RuntimeError):
-        print(f'Parameter names and value entry unsuccessful.')
+        print('Parameter names and value entry unsuccessful.')
 
     return
 
@@ -595,7 +596,7 @@ def save_time_domain_fit(filename: str, fit_model, save_data=False):
 
     save_lmfit_fit_statistics(f, fit_model)
     save_lmfit_ind_varis(f, fit_model)
-    save_lmfit_varis(f, fit_model)
+    save_lmfit_varis(f, fit_model, save_data)
 
     f.close()
     return
@@ -701,7 +702,8 @@ def load_lmfit_varis(hdf_file, fit_model):
                 fit_model.errorbars = True
 
     fit_model.params = params
-    fit_model.data = np.array(varis['Data'])
+    if 'Data' in varis.keys():
+        fit_model.data = np.array(varis['Data'])
 
     return
 

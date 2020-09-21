@@ -25,14 +25,13 @@ def dataset_fun(params, i, x, fun):
         parameters and independent variable array.
 
     """
-    args = []
+    args = {}
     for pname in params:
         # find all parameters with suffix for current index
         if pname.split('_')[-1] == str(i+1):
-            args.append(params[pname])
+            args[pname.split('_')[0]] = params[pname]
 
-    # print(args)
-    return fun(x, *args)
+    return fun(x, **args)
 
 
 def calc_resid(data, model):
