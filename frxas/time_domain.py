@@ -10,7 +10,8 @@ from scipy.special import dawsn
 
 
 def sort_files(all_files):
-    return int(all_files.split('\\R')[-1][2:-4])
+    # First split gets to R{last_run}, second split gets file index
+    return int(all_files.split('\\')[-1].split('.txt')[0][-3:])
 
 
 def extract_data(file_direc, match_str, start=0, end=-1, irr=100,
@@ -28,19 +29,19 @@ def extract_data(file_direc, match_str, start=0, end=-1, irr=100,
         return
 
     for i, file in enumerate(all_files[start:end]):
-        if i == start:
-            data = np.array(read_csv(file, delimiter='\t', header=None,
-                                     skiprows=skip_head))
-            t = data[:, 0]
-        else:
+        if i:
             dum = np.array(read_csv(file, delimiter='\t', header=None,
                                     skiprows=skip_head))
             data = np.append(data, dum, axis=0)
-
+            
             # Avoid repeating time point where t=0 at the beginning of each
             # file
             t = np.append(t, t[-1] + t[1])
             t = np.append(t, t[-1] + dum[1:, 0])
+        else:
+            data = np.array(read_csv(file, delimiter='\t', header=None,
+                                     skiprows=skip_head))
+            t = data[:, 0]
 
     # Subtract average to remove DC component from signals. The X-ray signal
     # may still have a DC component from beam intensity drifts during
@@ -96,7 +97,7 @@ def freq_bin(freq_in, frequencies, harmonic):
             bins[i, 0] = np.isclose(frequencies, -freq_in * (i+1)).nonzero()[0]
             bins[i, 1] = np.isclose(frequencies, freq_in * (i+1)).nonzero()[0]
         except ValueError:
-            print("{} harmonic not found in frequency list".format(i+1))
+            print("Harmonic {} not found in frequency list".format(i+1))
             return bins[:i]
 
     return bins
@@ -280,11 +281,11 @@ def phase_align(time, reference, signal, freq_in, window_param, phase=0,
         return sig
 
 
-def get_freq(direc, point, amplitude, file):
+def get_freq(direc, match_str): #direc, point, amplitude, file):
     """
     """
-    all_files = glob.glob(os.path.join(direc + point + amplitude + file +
-                                       ' [0-9][0-9][0-9].txt'))
+    all_files = glob.glob(os.path.join(direc + match_str))#point + amplitude + file +
+                                       #' [0-9][0-9][0-9].txt'))
     head = np.genfromtxt(all_files[0], delimiter='\t', max_rows=1)
     return head[2]
 

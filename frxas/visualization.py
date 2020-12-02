@@ -23,16 +23,21 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
     axes : matplotlib.axes.Axes
 
     """
-    try:
+    if 'marker' in kwargs.keys():
         marker = kwargs.pop('marker')
-    except KeyError:
+    else:
         marker = 'x'
-    try:
+
+    if 'ls' in kwargs.keys():
         ls = kwargs.pop('ls')
-    except KeyError:
+    else:
         ls = '-'
 
-    fontsize = 18
+    if 'fontsize' in kwargs.keys():
+        fontsize = kwargs.pop('fontsize')
+    else:
+        fontsize = 18
+
     try:
         ax_re = axes[0]
         ax_im = axes[1]
@@ -61,8 +66,8 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
                 ax_re.plot(xa, fit.real, marker='', ls=ls, **kwargs)
                 ax_im.plot(xa, fit.imag, marker='', ls=ls, **kwargs)
 
-    ax_re.set_ylabel(r'$Re[\chi]$', fontsize=fontsize)
-    ax_im.set_ylabel(r'$Im[\chi]$', fontsize=fontsize)
+    ax_re.set_ylabel(r'Re[$\chi$]', fontsize=fontsize)
+    ax_im.set_ylabel(r'Im[$\chi$]', fontsize=fontsize)
 
     ax_re.xaxis.set_major_formatter(plt.NullFormatter())
     ax_im.set_xlabel(r'Distance ($\mu m$)', fontsize=fontsize)
@@ -132,8 +137,8 @@ def plot_chi_mag(ax, x, data, params=None, add_fit=False,
                 fit = models.dataset_fun(params, i, xa, model)
                 ax.plot(xa, np.abs(fit), marker='', ls=ls, **kwargs)
 
-    ax.set_ylabel(r'$||\chi||$', fontsize=fontsize)
-    ax.set_xlabel(r'Distance ($\mu m$)', fontsize=fontsize)
+    ax.set_ylabel(r'||$\chi$||', fontsize=fontsize)
+    ax.set_xlabel(r'Distance ($\mu$m)', fontsize=fontsize)
 
     # Make the tick labels larger
     ax.tick_params(axis='both', which='major', labelsize=14)
