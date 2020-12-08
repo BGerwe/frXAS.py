@@ -1,5 +1,9 @@
 [run]
-omit = frxas/tests/*
+omit = 
+    frxas/tests/*
+    frxas/datain.py
+    frxas/frXAS_Analysis.py
+    frxas/preprocessing.py
 
 [report]
 omit =  
