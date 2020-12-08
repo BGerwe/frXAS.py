@@ -89,7 +89,7 @@ def objective_fun(params, x, data, fun):
     # change to array so residuals can be flattened as needed by minimize
     data = None
     ndata = None
-    resid = np.array(resid)
+    resid = np.array(resid, dtype=object)
     return np.concatenate(resid).ravel()
 
 
@@ -239,6 +239,44 @@ def chi_amp(x, amp, ld, tg, f):
     # after closing the docstring.
 
     return amp * np.exp(-x / ld * np.sqrt(1 + 1j * tg * 2 * np.pi * f))
+
+
+def chi_patterned(x, amp=1, gammap=1e-3, ld=15, tg=1, f=1, L=0.6):
+    r"""1D model of ORR on patterned thin film electrode.
+
+    Parameters
+    ----------
+    x : list or np.ndarray
+        Array or list of arrays of length values.
+    amp : float
+        Arbitrary scaling factor relating absorbance to concentration
+        displacements
+    gammap : float
+        Ratio of electrolyte to electrode resistances
+    ld : float
+        :math:`l_{\delta}` : Characteristic length scale of vacancy profile,
+        often called the "utilization length".
+    tg : float
+        :math:`t_G`  : Characteristic time scale of vacancy profile. Reflects
+        time scale of switching from kinetic limitations (low frequency) to
+        co-limitation by kinetics and diffusion (moderate to high frequency).
+    f : float
+        Applied linear frequency in units of Hz.
+    L : float
+        Film thickness in microns.
+
+    Returns
+    -------
+    np.ndarray
+        Evaluated function for given length array and parameters.
+    """
+    g_p = gammap
+    w = 2 * np.pi * f
+    chi = - amp / (1 + g_p * np.sqrt(1 + 1j * tg * w)) \
+        * np.exp(-x / ld * np.sqrt(1 + 1j * tg * w))
+    # Note gamma_p = gamma * L / ld
+
+    return chi
 
 
 def save_fit_report(filename, fit, start_inds=None):

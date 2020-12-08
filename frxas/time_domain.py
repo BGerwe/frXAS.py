@@ -1,4 +1,5 @@
 import os
+import traceback
 
 import numpy as np
 import glob
@@ -7,6 +8,8 @@ import lmfit
 from pandas import read_csv
 from numpy import fft
 from scipy.special import dawsn
+
+from . import hdf5_io
 
 
 def sort_files(all_files):
@@ -29,19 +32,19 @@ def extract_data(file_direc, match_str, start=0, end=-1, irr=100,
         return
 
     for i, file in enumerate(all_files[start:end]):
-        if i:
+        if not i:
+            data = np.array(read_csv(file, delimiter='\t', header=None,
+                                     skiprows=skip_head))
+            t = data[:, 0]
+        else:
             dum = np.array(read_csv(file, delimiter='\t', header=None,
                                     skiprows=skip_head))
             data = np.append(data, dum, axis=0)
-            
+
             # Avoid repeating time point where t=0 at the beginning of each
             # file
             t = np.append(t, t[-1] + t[1])
             t = np.append(t, t[-1] + dum[1:, 0])
-        else:
-            data = np.array(read_csv(file, delimiter='\t', header=None,
-                                     skiprows=skip_head))
-            t = data[:, 0]
 
     # Subtract average to remove DC component from signals. The X-ray signal
     # may still have a DC component from beam intensity drifts during
@@ -68,6 +71,66 @@ def extract_data(file_direc, match_str, start=0, end=-1, irr=100,
         return t, V, J, Ir, Io, If
     else:
         return t, V, J, Ir
+
+
+def extract_fit_save(read_direc, write_direc, location_keys, run_str='\\R',
+                     harmonics=1, save_fits=True, **fit_kws):
+    if 'ftol' not in fit_kws.keys():
+        fit_kws['ftol'] = 1e-13
+    if 'xtol' not in fit_kws.keys():
+        fit_kws['xtol'] = 1e-13
+
+    for loc in location_keys:  # range(1, n_locs+1):
+        # point = loc_str + f'{str(i)}'
+
+        # Sometimes we did more than 1 run, usually the last one is best
+        all_files = glob.glob(read_direc + loc + run_str + '[0-9] [0-9]*.txt')
+        last_run = 0
+        for files in all_files:
+            run_ind = int(files.split('\\')[-1][1])
+            if run_ind > last_run:
+                last_run = run_ind
+
+        match_str = loc + run_str \
+            + f'{str(last_run)} [0-9]*.txt'
+
+        loc_str = loc.split('\\')[-1]
+        print(f'Analyzing {read_direc} {loc_str} R{last_run}')
+
+        try:
+            ti, V, J, Ir = extract_data(read_direc, match_str, start=0,
+                                        end=None)
+            freq_in = get_freq(read_direc, match_str)
+
+            Ns = ti.size
+            b = 0.1 * freq_in * (ti[-1]+ti[1])
+            if Ns % 2 == 1:
+                Ns = Ns - 1
+                ti = ti[:-1]
+                V = V[:-1]
+                J = J[:-1]
+                Ir = Ir[:-1]
+
+            J_adj, J_adj_fit = phase_align(ti, V, J, freq_in, b, phase=0,
+                                           harmonics=harmonics,
+                                           fit_kws=fit_kws)
+            Ir_adj, Ir_adj_fit = phase_align(ti, V, Ir, freq_in, b, phase=0,
+                                             harmonics=harmonics,
+                                             fit_kws=fit_kws)
+            V_adj, V_adj_fit = phase_align(ti, V, V, freq_in, b, phase=0,
+                                           harmonics=harmonics,
+                                           fit_kws=fit_kws)
+
+            hdf5_io.save_time_domain_fit(write_direc + f" {loc_str}_J",
+                                         J_adj_fit)
+            hdf5_io.save_time_domain_fit(write_direc + f" {loc_str}_Ir",
+                                         Ir_adj_fit)
+            hdf5_io.save_time_domain_fit(write_direc + f" {loc_str}_V",
+                                         V_adj_fit)
+        except Exception:
+            print(traceback.format_exc())
+            continue
+    return
 
 
 def freq_bin(freq_in, frequencies, harmonic):
@@ -281,11 +344,10 @@ def phase_align(time, reference, signal, freq_in, window_param, phase=0,
         return sig
 
 
-def get_freq(direc, match_str): #direc, point, amplitude, file):
+def get_freq(direc, match_str):
     """
     """
-    all_files = glob.glob(os.path.join(direc + match_str))#point + amplitude + file +
-                                       #' [0-9][0-9][0-9].txt'))
+    all_files = glob.glob(os.path.join(direc + match_str))
     head = np.genfromtxt(all_files[0], delimiter='\t', max_rows=1)
     return head[2]
 
@@ -321,7 +383,7 @@ def gauss_window(signal, freq_in, time, window_param):
     t = time
     b = window_param
 
-    window = np.exp((-f**2 * t**2) / b**2)
+    window = np.exp((-f ** 2 * t ** 2) / b ** 2)
     win_sig = window * signal
 
     return win_sig
@@ -350,15 +412,16 @@ def gauss_fft(frequencies, freq_in, window_param, harmonic=1):
 
     """
 
-    w = 2 * np.pi * frequencies
-    w_tilde = 2 * np.pi * freq_in
+    f = frequencies
+    f_tilde = freq_in
+    w_tilde = 2 * np.pi * f_tilde
     b = window_param
     k = harmonic
     Ns = frequencies.size
     # Using frequency list to find dt based on Nyquist sampling theorem
     dt = -1 / (2 * frequencies[0])
 
-    x = ((w - k * w_tilde) * np.pi * b) / w_tilde
+    x = ((f - k * f_tilde) * np.pi * b) / f_tilde
 
     g_k = (b * np.sqrt(np.pi) / (dt * Ns * w_tilde)) * np.exp(-x**2)
 
@@ -389,15 +452,16 @@ def dawson_fft(frequencies, freq_in, window_param, harmonic=1):
 
     """
 
-    w = 2 * np.pi * frequencies
-    w_tilde = 2 * np.pi * freq_in
+    f = frequencies
+    f_tilde = freq_in
+    w_tilde = 2 * np.pi * f_tilde
     b = window_param
     k = harmonic
     Ns = frequencies.size
     # Using frequency list to find dt based on Nyquist sampling theorem
     dt = -1 / (2 * frequencies[0])
 
-    x = ((w - k * w_tilde) * np.pi * b) / w_tilde
+    x = ((f - k * f_tilde) * np.pi * b) / f_tilde
 
     d_k = dawsn(x) * (2 * b / (dt * Ns * w_tilde))
 
