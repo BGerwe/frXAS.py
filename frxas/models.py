@@ -1,7 +1,7 @@
 import re
 import numpy as np
 from scipy.special import lambertw
-from lmfit import Parameters, fit_report
+from lmfit import Parameters, fit_report, minimizer
 
 
 def dataset_fun(params, i, x, fun):
@@ -72,25 +72,22 @@ def objective_fun(params, x, data, fun):
     if np.shape(data[0]) == ():
         # If only one data set passed in
         resid.append(calc_resid(data, dataset_fun(params, 0, x, fun)))
+        resid = np.array(resid)
+
     else:
         # If multiple data sets passed
         ndata = np.shape(data)[0]
 
         # make residual per data set
         for i in range(ndata):
+            resid.append(calc_resid(data[i],
+                                    dataset_fun(params, i, x[i], fun)))
 
-            if data[i].dtype == np.complex:
-                # convert to floats as required by minimize()
-                resid.append(calc_resid(data[i],
-                             dataset_fun(params, i, x[i], fun)))
-            else:
-                resid.append(calc_resid(data[i],
-                             dataset_fun(params, i, x[i], fun)))
-    # change to array so residuals can be flattened as needed by minimize
-    data = None
-    ndata = None
-    resid = np.array(resid, dtype=object)
-    return np.concatenate(resid).ravel()
+        # change to array so residuals can be flattened as needed by minimize
+        resid = np.array(resid, dtype=object)
+    del data
+
+    return np.concatenate(resid)
 
 
 def calc_ao(aoo, po2, po2_ref):
@@ -308,61 +305,103 @@ def load_fit_report(filename):
         Directory and file name of saved fit report
     Returns
     -------
-    params: lmfit.parameter.Parameters
-        Object containing all parameter information from saved fit. Min and Max
-        values are 20% lower and higher, respectively, than the estimated
-        standard error from the fit, if available.
-
+    params: lmfit.MinimizerResult
+        Object containing parameter information and fit statsitics from report.
+        Information not included in the report is not carried over from the
+        original MinimizerResult object.
     """
+
     f = open(filename, mode='r')
     lines = f.readlines()
     f.close()
 
+# Start with empty MinimizerResult class and build up based on saved report txt
+    mini = minimizer.MinimizerResult()
+    mini.ndata = 1
+    mini.nfree = 1
+    mini.errorbars = False
+    mini.params = Parameters()
+
+# Pull out fit statistics values and find positions of "Variables" and
+# "Correlations" sections
     for i, line in enumerate(lines):
+        if '# fitting method' in line:
+            mini.method = line.split('=')[-1][1:].split('\n')[0]
+        if '# function evals' in line:
+            mini.nfev = int(line.split('=')[-1][1:])
+        if '# data points' in line:
+            mini.ndata = int(line.split('=')[-1][1:])
+        if '# variables' in line:
+            mini.nvarys = int(line.split('=')[-1][1:])
+        if 'chi-square' in line and 'chisqr' not in dir(mini):
+            mini.chisqr = float(line.split('=')[-1][1:])
+        if 'reduced chi-square' in line:
+            mini.redchi = float(line.split('=')[-1][1:])
+        if 'Akaike info' in line:
+            mini.aic = float(line.split('=')[-1][1:])
+        if 'Bayesian info' in line:
+            mini.bic = float(line.split('=')[-1][1:])
+
         if line.startswith("[[Variables]]"):
-            start_line = i + 1
-
+            start_varys = i + 1
         elif line.startswith("[[Correlations]]"):
-            end_line = i
+            end_varys = i
+            start_correls = i + 1
+        elif 'end_varys' in locals():
+            end_correls = i
         else:
-            end_line = i
-    raw = lines[start_line:end_line]
+            end_varys = i
 
-    # Pulling out key info from each line
-    params = Parameters()
-    # lmfit gets mad when you try to add an expression for a variable that
-    # that doesn't exist yet, so we have to do it at the end by saving all
-    # parameter names and expr variables
-    names, exprs = [], []
-    for line in raw:
+    if mini.method in ('leastsq', 'least_squares'):
+        mini.errorbars = True
+
+    varys = lines[start_varys:end_varys]
+    if 'start_correls' in locals():
+        correls = lines[start_correls:end_correls+1]
+
+# Walk through "Variables" section text and use it to reconstruct Parameters
+    for line in varys:
         name_str = re.search(r'[a-zA-Z]+_[0-9]+', line)
-        val_str = re.search(r' (\d+(\.\d+)?)', line)
-        bound_str = re.search(r'\+/- (\d+(\.\d+)?)', line)
-        fix_str = re.search(r'fixed', line)
-        expr_str = re.search(r'== .*', line)
+        val_str = re.search(r' -?\d+(\.\d+)?', line)
 
-        if name_str:
+        if name_str and val_str:
             name = name_str.group()
-            names.append(name)
-        if val_str:
             val = float(val_str.group())
-        if bound_str and val:
-            lb = val - float(bound_str.group()[4:]) * 1.2
-            ub = val + float(bound_str.group()[4:]) * 1.2
+            mini.params.add(name, value=val)
         else:
-            lb = -np.inf
-            ub = np.inf
-        vary = True
-        if fix_str:
-            vary = False
-        expr = None
-        if expr_str:
-            expr = expr_str.group()[4:-1]
-        exprs.append(expr)
+            continue
 
-        params.add(name, value=val, min=lb, max=ub, vary=vary)
+        if '(fixed)' in line:
+            mini.params[name].vary = False
+            mini.params[name].stderr = 0
+        else:
+            mini.params[name].vary = True
 
-    # Now we set expressions
-    for name, expr in zip(names, exprs):
-        params[name].expr = expr
-    return params
+            bound_str = re.search(r'\+/- (\d+(\.\d+)?(e-?\d+)?)', line)
+            expr_str = expr_str = re.search(r'== .*', line)
+            init_str = re.search(r'init = -?\d+(\.\d+)?', line)
+
+            if bound_str:
+                stderr = float(bound_str.group()[4:])
+                mini.params[name].stderr = stderr
+            if init_str:
+                init = float(init_str.group()[6:])
+                mini.params[name].init_value = init
+            elif expr_str:
+                expr = expr_str.group()[4:-1]
+                mini.params[name].expr = expr
+
+# Walk through "Correlations" text and extract that information. Unfortunately,
+# they are output with 3 sig figs, which creates ordering issues in the report
+# since they are sorted by correlation magnitude.
+    for line in correls:
+        vary1_str = re.search(r'C[(][a-zA-Z]+_[0-9]+', line).group()[2:]
+        vary2_str = re.search(r'[a-zA-Z]+_[0-9]+[)]', line).group()[:-1]
+        correl = float(line.split('=')[-1][1:])
+
+        if mini.params[vary1_str].correl:
+            mini.params[vary1_str].correl[vary2_str] = correl
+        else:
+            mini.params[vary1_str].correl = {vary2_str: correl}
+
+    return mini

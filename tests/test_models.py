@@ -1,6 +1,10 @@
-from frxas import models
+import re
+
 import numpy as np
-from lmfit import Parameters
+from lmfit import Parameters, fit_report
+from lmfit import Minimizer
+
+from frxas import models
 
 
 def test_dataset_fun():
@@ -102,7 +106,7 @@ def test_objective_fun():
     # Using lmfit to make a parameters dictionary for one data set
     params = Parameters()
     for i in range(2):
-        params.add('Ao_%i' % (i+1), value=1.2)
+        params.add('ao_%i' % (i+1), value=1.2)
         params.add('ld_%i' % (i+1), value=20)
         params.add('tg_%i' % (i+1), value=1.5)
         params.add('f_%i' % (i+1), value=2)
@@ -181,7 +185,7 @@ def test_objective_fun():
     assert np.isclose(models.objective_fun(params, x[0], d1, models.chi_ideal),
                       c1).all()
     # Testing if it works with multiple data sets
-    data = np.array([d1, d2])
+    data = np.array([d1, d2], dtype=object)
     assert np.isclose(models.objective_fun(params, x, data, models.chi_ideal),
                       c2).all()
 
@@ -247,3 +251,116 @@ def test_chi_amp():
                  0.03842837 + 0.01001854j,  0.03521183 + 0.00539159j])
 
     assert np.isclose(models.chi_amp(x, amp, ld, tg, f), correct).all()
+
+
+def test_chi_patterned():
+    amp = -0.83333333
+    gammap = 0.01
+    ld = 20
+    tg = 1.5
+    f = 2
+    L = 1
+    x = np.linspace(0, 20, 30)
+
+    correct = \
+        np.array([8.07187610e-01-0.02339461j, 7.18039125e-01-0.09538395j,
+                  6.31852741e-01-0.15138595j, 5.49785008e-01-0.19339696j,
+                  4.72683561e-01-0.22330497j, 4.01130406e-01-0.2428727j,
+                  3.35482115e-01-0.25372668j, 2.75906688e-01-0.25735103j,
+                  2.22417023e-01-0.25508545j, 1.74900963e-01-0.24812646j,
+                  1.33147987e-01-0.23753128j, 9.68726723e-02-0.22422375j,
+                  6.57350761e-02-0.20900182j, 3.93582335e-02-0.19254605j,
+                  1.73429818e-02-0.17542886j, -7.19664638e-04-0.15812416j,
+                  -1.52383605e-02-0.14101702j, -2.66132658e-02-0.12441327j,
+                  -3.52296485e-02-0.10854886j, -4.14530373e-02-0.09359877j,
+                  -4.56257188e-02-0.07968534j, -4.80643870e-02-0.06688616j,
+                  -4.90587678e-02-0.05524121j, -4.88710548e-02-0.04475942j,
+                  -4.77360098e-02-0.03542456j, -4.58615966e-02-0.02720047j,
+                  -4.34300294e-02-0.02003571j, -4.05991361e-02-0.01386752j,
+                  -3.75039449e-02-0.00862539j, -3.42584211e-02-0.00423391j])
+
+    assert np.isclose(models.chi_patterned(x, amp, gammap, ld, tg, f, L),
+                      correct).all()
+
+
+def test_fit_report_io():
+    # List of distance arrays
+    x = []
+    x.append(np.linspace(0, 80, 20))
+    x.append(np.linspace(0, 60, 26))
+
+    # Using lmfit to make a parameters dictionary for one data set
+    params = Parameters()
+    params.add('ao_1', value=1.2)
+    params.add('ld_1', value=20)
+    params.add('tg_1', value=1.5)
+    params.add('f_1', value=1.5, vary=False)
+    params.add('ao_2', value=1.2)
+    params.add('ld_2', value=20)
+    params.add('tg_2', value=1.5)
+    params.add('f_2', value=1.5, vary=False)
+    params['ao_2'].expr = 'ao_1'
+
+    # Data generated from the first distance array with ld=19,
+    # tg=1.4, a0=1.1, f=1.5
+    d1 = [-9.09090909e-01 + 0.0j, -4.29626046e-01 + 2.62258921e-01j,
+          -1.27378677e-01 + 2.47881179e-01j, 1.13122384e-02 + 1.53892646e-01j,
+          4.97417267e-02 + 6.94645088e-02j,  4.35468313e-02 + 1.84784057e-02j,
+          2.59104777e-02 - 3.82991467e-03j,  1.11401255e-02 - 9.28475351e-03j,
+          2.58618647e-03 - 7.60162614e-03j, -9.70751323e-04 - 4.33851776e-03j,
+          -1.71036254e-03 - 1.77028724e-03j, -1.31899891e-03 - 3.43204038e-04j,
+          -7.22353067e-04 + 2.18316821e-04j, -2.78394774e-04 + 3.11561941e-04j,
+          -4.16853221e-05 + 2.27553302e-04j,  4.59456616e-05 + 1.19564690e-04j,
+          5.62059955e-05 + 4.32502899e-05j,  3.90393674e-05 + 4.22502004e-06j,
+          1.96684160e-05 - 9.26556808e-06j,  6.62209452e-06 - 1.00528416e-05j]
+    d1 = np.array(d1)
+
+    # Data generated from the second distance array with ld=19,
+    # tg=1.4, a0=1.1, f=1.5
+    d2 = [-9.09090909e-01 + 0.00000000e+00j, -6.17618817e-01 + 1.99470905e-01j,
+          -3.75830797e-01 + 2.71033366e-01j, -1.95862591e-01 + 2.66598878e-01j,
+          -7.45686726e-02 + 2.24097909e-01j, -1.48940288e-03 + 1.68609502e-01j,
+          3.59840875e-02 + 1.14876843e-01j,  4.96529412e-02 + 7.01495537e-02j,
+          4.91253244e-02 + 3.67635039e-02j,  4.14413715e-02 + 1.41974347e-02j,
+          3.12696406e-02 + 5.52480451e-04j,  2.13652144e-02 - 6.48577731e-03j,
+          1.30920180e-02 - 9.09422445e-03j,  6.89902785e-03 - 9.05106491e-03j,
+          2.70109984e-03 - 7.66288967e-03j,  1.53699201e-04 - 5.79868925e-03j,
+          -1.16791650e-03 - 3.97324192e-03j, -1.66526071e-03 - 2.44308197e-03j,
+          -1.66740213e-03 - 1.29439457e-03j, -1.41681429e-03 - 5.13528653e-04j,
+          -1.07523371e-03 - 3.80069033e-05j, -7.38832426e-04 + 2.10104469e-04j,
+          -4.55847788e-04 + 3.04854051e-04j, -2.42803724e-04 + 3.07133166e-04j,
+          -9.75656197e-05 + 2.61935851e-04j, -8.81075936e-06 + 1.99361814e-04j]
+    d2 = np.array(d2)
+
+    data = np.array([d1, d2], dtype=object)
+
+    mini = Minimizer(models.objective_fun, params,
+                     fcn_args=(x, data, models.chi_ideal))
+    out = mini.minimize(method='leastsq')
+    good_report = fit_report(out)
+
+    start_ind = [0, 0]
+    models.save_fit_report('test_io.txt', out, start_ind)
+
+    read_in = models.load_fit_report('test_io.txt')
+
+    lines1 = fit_report(out).split('\n')
+    lines2 = fit_report(read_in).split('\n')
+
+    correl_dict1, correl_dict2 = {}, {}
+    for i, (line1, line2) in enumerate(zip(lines1, lines2)):
+        if 'correl_line' not in locals():
+            assert line1 == line2
+        else:
+            key1 = re.search(r'C[(].*[)]', line1).group()
+            val1 = float(re.search(r'-?\d\.\d+', line1).group())
+            correl_dict1[key1] = val1
+
+            key2 = re.search(r'C[(].*[)]', line2).group()
+            val2 = float(re.search(r'-?\d\.\d+', line2).group())
+            correl_dict2[key2] = val2
+
+        if line1.startswith('[[Correlations]]'):
+            correl_line = i
+
+    assert correl_dict1 == correl_dict2

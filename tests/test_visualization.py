@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from lmfit import Parameters
 
-from ..visualization import plot_chi
-from .. import models
+from frxas.visualization import plot_chi
+from frxas import models
 
 
 class TestCase(unittest.TestCase):
