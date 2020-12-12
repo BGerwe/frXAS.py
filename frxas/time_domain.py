@@ -103,7 +103,7 @@ def extract_fit_save(read_direc, write_direc, location_keys, run_str='\\R',
         try:
             ti, v, j, ir, ir_avg = \
                 extract_data(read_direc, match_str, start=0, end=None,
-                             xray_disp=xray_disp, xray_raw=True)
+                             xray_disp=xray_disp)
 
             freq_in = get_freq(read_direc, match_str)
 
