@@ -49,32 +49,35 @@ def extract_data(file_direc, match_str, start=0, end=-1, irr=100,
     # Subtract average to remove DC component from signals. The X-ray signal
     # may still have a DC component from beam intensity drifts during
     # measurement time.
-    V = sub_mean(data[:, 4])
+    v = sub_mean(data[:, 4])
 
     # Use value of potentiostat internal resistor to convert measured current
     # from units of volts to amperes
-    J = sub_mean(data[:, 3]) / irr
+    j = sub_mean(data[:, 3]) / irr
 
-    Ir = data[:, 2] / data[:, 1]
-    Iravg = np.mean(Ir)
+    ir = data[:, 2] / data[:, 1]
+    ir_avg = np.mean(ir)
+
     # Divide by average value of X-ray signal to make it a displacement from
     # the mean, which is more physically significant for spatially resolved
     # measurements. Have option of leaving average for incident energy
     # resolved measurements.
-    Ir = sub_mean(Ir)
+    ir = sub_mean(ir)
     if xray_disp:
-        Ir = Ir / Iravg
+        ir = ir / ir_avg
 
     if xray_raw:
-        Io = data[:, 1]
-        If = data[:, 2]
-        return t, V, J, Ir, Io, If
+        i_o = data[:, 1]
+        i_f = data[:, 2]
+        return t, v, j, ir, ir_avg, i_o, i_f
     else:
-        return t, V, J, Ir
+        return t, v, j, ir, ir_avg
 
 
 def extract_fit_save(read_direc, write_direc, location_keys, run_str='\\R',
-                     harmonics=1, save_fits=True, **fit_kws):
+                     harmonics=1, save_fits=True, xray_disp=True, phase=0,
+                     **fit_kws):
+
     if 'ftol' not in fit_kws.keys():
         fit_kws['ftol'] = 1e-13
     if 'xtol' not in fit_kws.keys():
@@ -98,35 +101,46 @@ def extract_fit_save(read_direc, write_direc, location_keys, run_str='\\R',
         print(f'Analyzing {read_direc} {loc_str} R{last_run}')
 
         try:
-            ti, V, J, Ir = extract_data(read_direc, match_str, start=0,
-                                        end=None)
+            ti, v, j, ir, ir_avg = \
+                extract_data(read_direc, match_str, start=0, end=None,
+                             xray_disp=xray_disp, xray_raw=True)
+
             freq_in = get_freq(read_direc, match_str)
 
-            Ns = ti.size
+            ns = ti.size
             b = 0.1 * freq_in * (ti[-1]+ti[1])
-            if Ns % 2 == 1:
-                Ns = Ns - 1
+
+            # Make sure signals have even length to avoid 0 Hz bin shift.
+            # Windowing in `phase_align()` will prevent aliasing from
+            # noninteger number of waveforms.
+            if ns % 2 == 1:
+                ns = ns - 1
                 ti = ti[:-1]
-                V = V[:-1]
-                J = J[:-1]
-                Ir = Ir[:-1]
+                v = v[:-1]
+                j = j[:-1]
+                ir = ir[:-1]
 
-            J_adj, J_adj_fit = phase_align(ti, V, J, freq_in, b, phase=0,
+            j_adj, j_adj_fit = phase_align(ti, v, j, freq_in, b, phase=phase,
                                            harmonics=harmonics,
                                            fit_kws=fit_kws)
-            Ir_adj, Ir_adj_fit = phase_align(ti, V, Ir, freq_in, b, phase=0,
-                                             harmonics=harmonics,
+            ir_adj, ir_adj_fit = phase_align(ti, v, ir, freq_in, b,
+                                             phase=phase, harmonics=harmonics,
                                              fit_kws=fit_kws)
-            V_adj, V_adj_fit = phase_align(ti, V, V, freq_in, b, phase=0,
+            v_adj, v_adj_fit = phase_align(ti, v, v, freq_in, b, phase=phase,
                                            harmonics=harmonics,
                                            fit_kws=fit_kws)
 
-            hdf5_io.save_time_domain_fit(write_direc + f" {loc_str}_J",
-                                         J_adj_fit)
-            hdf5_io.save_time_domain_fit(write_direc + f" {loc_str}_Ir",
-                                         Ir_adj_fit)
-            hdf5_io.save_time_domain_fit(write_direc + f" {loc_str}_V",
-                                         V_adj_fit)
+            ir_adj_fit.ir_avg = ir_avg
+
+            del ti, v, j, ir
+
+            if save_fits:
+                hdf5_io.save_time_domain_fit(write_direc + f" {loc_str}_J",
+                                             j_adj_fit)
+                hdf5_io.save_time_domain_fit(write_direc + f" {loc_str}_Ir",
+                                             ir_adj_fit)
+                hdf5_io.save_time_domain_fit(write_direc + f" {loc_str}_V",
+                                             v_adj_fit)
         except Exception:
             print(traceback.format_exc())
             continue
@@ -186,9 +200,9 @@ def get_windowed_fft(time, signal, freq_in, window_param):
         Complex FFT of signal with window function applied.
 
     """
-    Ns = np.size(time)
+    ns = np.size(time)
     sig_win = gauss_window(signal, freq_in, time, window_param)
-    sig_win_fft = fft.fftshift(fft.fft(sig_win)/(Ns * np.pi))
+    sig_win_fft = fft.fftshift(fft.fft(sig_win)/(ns * np.pi))
     return sig_win_fft
 
 
@@ -277,8 +291,8 @@ def phase_align(time, reference, signal, freq_in, window_param, phase=0,
         Model class object
 
     """
-    Ns = np.size(time)
-    freqs = fft.fftshift(fft.fftfreq(Ns, time[1]))
+    ns = np.size(time)
+    freqs = fft.fftshift(fft.fftfreq(ns, time[1]))
 
     # Get FFT of gaussian windowed (apodized) signals
     ref_fft = get_windowed_fft(time, reference, freq_in, window_param)
@@ -334,7 +348,12 @@ def phase_align(time, reference, signal, freq_in, window_param, phase=0,
         sig_fit.params[f'h{i}_im_comp'].value = \
             np.sin(sig_comps[f'ang_{i}'] + ang_adj * i) * sig_comps[f'mag_{i}']
 
-    sig = fft.ifft(fft.ifftshift(sig_fit.eval()*(Ns*np.pi)))
+    sig = fft.ifft(fft.ifftshift(sig_fit.eval()*(ns*np.pi)))
+    # Something about this ifft makes the adjusted time-domain signal not
+    # decay to 0. Perhaps it's a limit of numerical accuracy. Regardless, it
+    # distorts the fft compared to the original and makes it appear like the
+    # fit is bad.
+
     # Update data in lmfit.ModelResult so the data and best_fit results don't
     # look wildly different.
     sig_fit.data = get_windowed_fft(time, sig, freq_in, window_param)
@@ -417,13 +436,13 @@ def gauss_fft(frequencies, freq_in, window_param, harmonic=1):
     w_tilde = 2 * np.pi * f_tilde
     b = window_param
     k = harmonic
-    Ns = frequencies.size
+    ns = frequencies.size
     # Using frequency list to find dt based on Nyquist sampling theorem
     dt = -1 / (2 * frequencies[0])
 
     x = ((f - k * f_tilde) * np.pi * b) / f_tilde
 
-    g_k = (b * np.sqrt(np.pi) / (dt * Ns * w_tilde)) * np.exp(-x**2)
+    g_k = (b * np.sqrt(np.pi) / (dt * ns * w_tilde)) * np.exp(-x**2)
 
     return g_k
 
@@ -457,13 +476,13 @@ def dawson_fft(frequencies, freq_in, window_param, harmonic=1):
     w_tilde = 2 * np.pi * f_tilde
     b = window_param
     k = harmonic
-    Ns = frequencies.size
+    ns = frequencies.size
     # Using frequency list to find dt based on Nyquist sampling theorem
     dt = -1 / (2 * frequencies[0])
 
     x = ((f - k * f_tilde) * np.pi * b) / f_tilde
 
-    d_k = dawsn(x) * (2 * b / (dt * Ns * w_tilde))
+    d_k = dawsn(x) * (2 * b / (dt * ns * w_tilde))
 
     return d_k
 
