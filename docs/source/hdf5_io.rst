@@ -1,4 +1,4 @@
-HDF5_io
+hdf5_io
 =======
 
 .. automodule:: frxas.hdf5_io

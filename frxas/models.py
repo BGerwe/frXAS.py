@@ -5,8 +5,7 @@ from lmfit import Parameters, fit_report, minimizer
 
 
 def dataset_fun(params, i, x, fun):
-    """
-    Calculate a model function profile from fit parameters for one data set.
+    """Calculate a model function profile from fit parameters for one data set.
 
     Parameters
     ----------
@@ -17,7 +16,7 @@ def dataset_fun(params, i, x, fun):
     x : np.ndarray
         Array of independent variable values.
     fun : callable
-        Function to be evaluated following the form fun(x, \*args)
+        Function to be evaluated following the form fun(x, \\*args)
 
     Returns
     -------
@@ -36,9 +35,8 @@ def dataset_fun(params, i, x, fun):
 
 
 def calc_resid(data, model):
-    """
-    Calculates residuals of fit to one data set.
-    
+    """Calculates residuals of fit to one data set.
+
     Parameters
     ----------
     data : np.ndarray
@@ -65,8 +63,7 @@ def calc_resid(data, model):
 
 
 def objective_fun(params, x, data, fun):
-    """
-    Calculate a residuals array of all data sets fit to model function.
+    """Calculate a residuals array of all data sets fit to model function.
 
     Parameters
     ----------
@@ -77,7 +74,7 @@ def objective_fun(params, x, data, fun):
     data : list or np.ndarray
         Array or list of arrays of data sets to be fit.
     fun : callable
-        Function to be evaluated following the form fun(x, \*args).
+        Function to be evaluated following the form fun(x, \\*args).
 
     Returns
     -------
@@ -109,8 +106,7 @@ def objective_fun(params, x, data, fun):
 
 
 def calc_ao(aoo, po2, po2_ref):
-    """
-    Calculates an adjusted thermodynamic factor `ao`.
+    """Calculates an adjusted thermodynamic factor `ao`.
 
     Parameters
     ----------
@@ -135,8 +131,8 @@ def calc_ao(aoo, po2, po2_ref):
 
     .. math::
 
-        A_o = 1 + W( \frac{A_{oo} - 1 * e^{A_{oo} - 1}}\
-        {\sqrt{\frac{pO_2}{pO_{2,ref}}}})
+        A_o = 1 + W( \\frac{A_{oo} - 1 * e^{A_{oo} - 1}}\
+        {\\sqrt{\\frac{pO_2}{pO_{2,ref}}}})
 
     Where W is the lambert W function [1]_.
 
@@ -153,16 +149,14 @@ def calc_ao(aoo, po2, po2_ref):
 
 
 def chi_ideal(x, ao, ld, tg, f):
-    """
-    Function for dimensionless vacancy concentrations assuming ideal
-    behavior and overpotential control.
+    """Model of chi profile w/ overpotential control and ideal thermo (Ao = 1).
 
     Parameters
     ----------
     x : list or np.ndarray
         Array or list of arrays of length values.
     ld : float
-        :math:`l_{\delta}` : Characteristic length scale of vacancy profile,
+        :math:`l_{\\delta}` : Characteristic length scale of vacancy profile,
         often called the "utilization length".
     tg : float
         :math:`t_G`  : Characteristic time scale of vacancy profile. Reflects
@@ -182,7 +176,8 @@ def chi_ideal(x, ao, ld, tg, f):
     -----
     .. math::
 
-        \chi = \frac{-e^{-\frac{x}{l_{\delta}}\sqrt{1 + j 2 \pi f t_G}}}{A_o}
+        \\chi = \\frac{-e^{-\\frac{x}{l_{\\delta}} |br|
+        \\sqrt{1 + j 2 \\pi f t_G}}}{A_o}
 
     Based on [1]_ this solution assumes :
         1. Only bulk diffusion is considered. :math:`O_2` reduction occurs at
@@ -196,20 +191,20 @@ def chi_ideal(x, ao, ld, tg, f):
         Journal of The Electrochemical Society, 156, B513-B525 (2009)
         `doi:10.1149/1.3079337 <https://doi.org/10.1149/1.3079337>`_.
 
+
     """
     return -1 / ao * np.exp(-x / ld * np.sqrt(1 + 1j * tg * 2 * np.pi * f))
 
 
 def chi_amp(x, amp, ld, tg, f):
-    r"""Function for dimensionless vacancy concentrations assuming ideal
-    behavior and overpotential control.
+    """Ideal chi profile with adjustable amplitude.
 
     Parameters
     ----------
     x : list or np.ndarray
         Array or list of arrays of length values.
     ld : float
-        :math:`l_{\delta}` : Characteristic length scale of vacancy profile,
+        :math:`l_{\\delta}` : Characteristic length scale of vacancy profile,
         often called the "utilization length".
     tg : float
         :math:`t_G`  : Characteristic time scale of vacancy profile. Reflects
@@ -230,7 +225,8 @@ def chi_amp(x, amp, ld, tg, f):
     -----
     .. math::
 
-        \chi = \frac{-e^{-\frac{x}{l_{\delta}}\sqrt{1 + j 2 \pi f t_G}}}{A_o}
+        \\chi = \\frac{-e^{-\\frac{x}{l_{\\delta}} |br|
+        \\sqrt{1 + j 2 \\pi f t_G}}}{A_o}
 
     Based on [1]_ this solution assumes :
         1. Only bulk diffusion is considered. :math:`O_2` reduction occurs at
@@ -250,8 +246,7 @@ def chi_amp(x, amp, ld, tg, f):
 
 
 def chi_patterned(x, amp=1, gammap=1e-3, ld=15, tg=1, f=1, L=0.6):
-    """
-    1D model of ORR on patterned thin film electrode.
+    """Model of chi profile with voltage control and nonideal thermo.
 
     Parameters
     ----------
@@ -263,7 +258,7 @@ def chi_patterned(x, amp=1, gammap=1e-3, ld=15, tg=1, f=1, L=0.6):
     gammap : float
         Ratio of electrolyte to electrode resistances
     ld : float
-        :math:`l_{\delta}` : Characteristic length scale of vacancy profile,
+        :math:`l_{\\delta}` : Characteristic length scale of vacancy profile,
         often called the "utilization length".
     tg : float
         :math:`t_G`  : Characteristic time scale of vacancy profile. Reflects
@@ -290,8 +285,7 @@ def chi_patterned(x, amp=1, gammap=1e-3, ld=15, tg=1, f=1, L=0.6):
 
 
 def save_fit_report(filename, fit, start_inds=None):
-    """
-    Function to save lmfit minimize results from `lmfit.fit_report`.
+    """Function to save lmfit minimize results from `lmfit.fit_report`.
 
     Parameters
     ----------
@@ -311,8 +305,7 @@ def save_fit_report(filename, fit, start_inds=None):
 
 
 def load_fit_report(filename):
-    """
-    Extracts information from saved fit report into a `Parameters` object.
+    """Extracts information from saved fit report into a `Parameters` object.
 
     Parameters
     ----------
@@ -331,7 +324,8 @@ def load_fit_report(filename):
     lines = f.readlines()
     f.close()
 
-    # Start with empty MinimizerResult class and build up based on saved report txt
+    # Start with empty MinimizerResult class and build up based on
+    # saved report txt
     mini = minimizer.MinimizerResult()
     mini.ndata = 1
     mini.nfree = 1
@@ -375,7 +369,7 @@ def load_fit_report(filename):
     if 'start_correls' in locals():
         correls = lines[start_correls:end_correls+1]
 
-    # Walk through "Variables" section text and use it to reconstruct Parameters
+    # Walk through "Variables" section text and reconstruct Parameters
     for line in varys:
         name_str = re.search(r'[a-zA-Z]+_[0-9]+', line)
         val_str = re.search(r' -?\d+(\.\d+)?', line)
@@ -407,9 +401,9 @@ def load_fit_report(filename):
                 expr = expr_str.group()[4:-1]
                 mini.params[name].expr = expr
 
-    # Walk through "Correlations" text and extract that information. Unfortunately,
-    # they are output with 3 sig figs, which creates ordering issues in the report
-    # since they are sorted by correlation magnitude.
+    # Walk through "Correlations" text and extract that information.
+    # Unfortunately, they are output with 3 sig figs, which creates ordering
+    # issues in the report since they are sorted by correlation magnitude.
     for line in correls:
         vary1_str = re.search(r'C[(][a-zA-Z]+_[0-9]+', line).group()[2:]
         vary2_str = re.search(r'[a-zA-Z]+_[0-9]+[)]', line).group()[:-1]

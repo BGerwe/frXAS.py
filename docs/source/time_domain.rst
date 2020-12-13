@@ -1,4 +1,4 @@
-Time_domain
+time_domain
 ===========
 
 .. automodule:: frxas.time_domain

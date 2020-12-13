@@ -146,8 +146,7 @@ def extract_fit_save(read_direc, write_direc, file_suffixes, positions=None,
 
 
 def freq_bin(freq_in, frequencies, harmonic):
-    """
-    Finds the index of the FFT bin for an input frequency.
+    """Finds the index of the FFT bin for an input frequency.
 
     Parameters
     ----------
@@ -180,8 +179,7 @@ def freq_bin(freq_in, frequencies, harmonic):
 
 
 def get_windowed_fft(time, signal, freq_in, window_param):
-    """
-    Applies gaussian window to signal and calculates the complex FFT.
+    """Applies gaussian window to signal and calculates the complex FFT.
 
     Parameters
     ----------
@@ -194,6 +192,7 @@ def get_windowed_fft(time, signal, freq_in, window_param):
     window_param : float
         Defines decay length of window function. Corresponds to number of
         waveforms at the signals frequency.
+
     Returns
     -------
     sig_win_fft: np.ndarray
@@ -208,8 +207,7 @@ def get_windowed_fft(time, signal, freq_in, window_param):
 
 def fit_windowed_fft(frequencies, signal_fft, freq_in, window_param,
                      harmonics=1, fit_kws=None, weights=None):
-    """
-    Fits the windowed fft to the lineshape from `fft_shape`.
+    """Fits the windowed fft to the lineshape from `fft_shape`.
 
     Parameters
     ----------
@@ -227,6 +225,7 @@ def fit_windowed_fft(frequencies, signal_fft, freq_in, window_param,
         Number of harmonics to analyze for phase adjustments.
     fit_kws: dict, optional
         Optional parameters to pass to the minimizer.
+
     Returns
     -------
     model_fit: lmfit.ModelResult
@@ -261,8 +260,7 @@ def fit_windowed_fft(frequencies, signal_fft, freq_in, window_param,
 
 def phase_align(time, reference, signal, freq_in, window_param, phase=0,
                 harmonics=1, return_params=True, fit_kws=None, weights=None):
-    """
-    Adjusts a time-domain reference to a desired phase angle and aligns
+    """Adjusts a time-domain reference to a desired phase angle and aligns
     a time-domain signal to the reference while maintaining phase coherence.
 
     Parameters
@@ -393,8 +391,7 @@ def sub_mean(data):
 
 
 def gauss_window(signal, freq_in, time, window_param):
-    """
-    Applies a gaussian windowing function to a time-domain signal.
+    """Applies a gaussian windowing function to a time-domain signal.
 
     Parameters
     ----------
@@ -425,8 +422,7 @@ def gauss_window(signal, freq_in, time, window_param):
 
 
 def gauss_fft(frequencies, freq_in, window_param, harmonic=1):
-    """
-    Calculates the gaussian lineshape for FFT fitting
+    """Calculates the gaussian lineshape for FFT fitting
 
     Parameters
     ----------
@@ -465,8 +461,7 @@ def gauss_fft(frequencies, freq_in, window_param, harmonic=1):
 
 
 def dawson_fft(frequencies, freq_in, window_param, harmonic=1):
-    """
-    Calculates the dawson function lineshape for FFT fitting.
+    """Calculates the dawson function lineshape for FFT fitting.
 
     Parameters
     ----------
@@ -506,8 +501,7 @@ def dawson_fft(frequencies, freq_in, window_param, harmonic=1):
 
 def fft_shape(frequencies, freq_in, window_param, harmonic=1, re_comp=1,
               im_comp=1):
-    """
-    Calculates the lineshape of a gaussian windowed signal for fitting.
+    """Calculates the lineshape of a gaussian windowed signal for fitting.
 
     Parameters
     ----------
@@ -540,18 +534,19 @@ def fft_shape(frequencies, freq_in, window_param, harmonic=1, re_comp=1,
 
     .. math::
 
-        V(t) = \frac{1}{2} \sum_{k=0}^{\infty} \hat{V_k} exp(j k
-        \tilde{\omega}t) + \hat{V_{-k}} exp(-j k \tilde{\omega}t)
+        V(t) = \\frac{1}{2} \\sum_{k=0}^{\\infty} \\hat{V_k} exp(j k
+        \\tilde{\\omega}t) + \\hat{V_{-k}} exp(-j k \\tilde{\\omega}t)
 
-    Where :math:`\tilde{\omega}` is the radial frequency of the signal, k is
+    Where :math:`\\tilde{\\omega}` is the radial frequency of the signal, k is
     the harmonic index and the complex Fourier coefficients of each harmonic
-    are defined as :math:`\hat{V_{\pm k}} = \hat{V^{'}_k}\pm j \hat{V^{''}_k}`
+    are defined as :math:`\\hat{V_{\\pm k}} = \\hat{V^{'}_k}\\pm j |br|
+    \\hat{V^{''}_k}`.
 
     A gaussian apodization window is applied as:
 
     .. math::
 
-        W(t) = exp(-(\frac{\tilde{\omega}t}{2\pi b})^2)
+        W(t) = exp(-(\\frac{\\tilde{\\omega}t}{2\\pi b})^2)
 
     Where b is a windowing parameter tied to the number of signal cycles.
 
@@ -559,41 +554,46 @@ def fft_shape(frequencies, freq_in, window_param, harmonic=1, re_comp=1,
 
     .. math::
 
-        f(\omega)=\frac{1}{\pi}\int_0^{\infty}f(t)e^{-j\omega t}
+        f(\\omega)=\\frac{1}{\\pi}\\int_0^{\\infty}f(t)e^{-j\\omega t}
 
     Using that definition, the fourier transform of the apodized signal is:
 
     .. math::
 
-        \hat{V}(\omega)=\frac{1}{\pi}\int_0^{\infty}exp(\frac{-\tilde{\omega}^2
-        t^2}{4\pi^2b^2})V(t)e^{-j\omega t}
+        \\hat{V}(\\omega)=\\frac{1}{\\pi}\\int_0^{\\infty}exp(\\frac{-\\tilde{\\omega}^2
+        t^2}{4\\pi^2b^2})V(t)e^{-j\\omega t}
 
     Solving this and rearranging we get:
 
     .. math::
 
-        \hat{V}(\omega)=\frac{1}{2} \sum_{k=0}^{\infty} \hat{V^{'}_k} (G_k
-        (\omega) + G_{-k}(\omega)) + \hat{V^{''}_k}(D_k(\omega)-D_{-k}(\omega))
-        \\ +\frac{j}{2}\sum_{k=0}^{\infty}\hat{V^{''}_k}(G_k(\omega)-
-        G_{-k}(\omega))+\hat{V^{'}_k}(-D_k(\omega)-D_{-k}(\omega))
+        \\hat{V}(\\omega)&=\\frac{1}{2} \\sum_{k=0}^{\\infty} \\hat{V^{'}_k}
+        (G_k(\\omega) + G_{-k}(\\omega)) + \\hat{V^{''}_k} (D_k(\\omega) -
+        D_{-k}(\\omega))
+
+        &+ \\frac{j}{2} \\sum_{k=0}^{\\infty} \\hat{V^{''}_k} (G_k(\\omega)
+        - G_{-k}(\\omega)) + \\hat{V^{'}_k} (-D_k(\\omega) - D_{-k}(\\omega))
 
     Where we also define:
 
     .. math::
 
-        G_k(\omega)=\frac{b\sqrt{\pi}}{\tilde{\omega}}exp(\frac{-(\omega-k
-        \tilde{\omega})^2\pi^2b^2}{\tilde{\omega}^2}) \\
-        G_{-k}(\omega)=\frac{b\sqrt{\pi}}{\tilde{\omega}}exp(\frac{-(\omega+k
-        \tilde{\omega})^2\pi^2b^2}{\tilde{\omega}^2}) \\
-        D_{k}(\omega)=\frac{b\sqrt{\pi}}{\tilde{\omega}}exp(\frac{-(\omega-k
-        \tilde{\omega})^2\pi^2b^2}{\tilde{\omega}^2})erfi(\frac{(\omega-k
-        \tilde{\omega})\pi b}{\tilde{\omega}}) \\
-        D_{-k}(\omega)=\frac{b\sqrt{\pi}}{\tilde{\omega}}exp(\frac{-(\omega+k
-        \tilde{\omega})^2\pi^2b^2}{\tilde{\omega}^2})erfi(\frac{(\omega+k
-        \tilde{\omega})\pi b}{\tilde{\omega}})
+        G_k(\\omega)&=\\frac{b\\sqrt{\\pi}}{\\tilde{\\omega}}exp(\\frac{-(\\omega-k
+        \\tilde{\\omega})^2\\pi^2b^2}{\\tilde{\\omega}^2})
+
+        G_{-k}(\\omega)&=\\frac{b\\sqrt{\\pi}}{\\tilde{\\omega}}exp(\\frac{-(\\omega+k
+        \\tilde{\\omega})^2\\pi^2b^2}{\\tilde{\\omega}^2})
+
+        D_{k}(\\omega)&=\\frac{b\\sqrt{\\pi}}{\\tilde{\\omega}}exp(\\frac{-(\\omega-k
+        \\tilde{\\omega})^2\\pi^2b^2}{\\tilde{\\omega}^2})erfi(\\frac{(\\omega-k
+        \\tilde{\\omega})\\pi b}{\\tilde{\\omega}})
+
+        D_{-k}(\\omega)&=\\frac{b\\sqrt{\\pi}}{\\tilde{\\omega}}exp(\\frac{-(\\omega+k
+        \\tilde{\\omega})^2\\pi^2b^2}{\\tilde{\\omega}^2})erfi(\\frac{(\\omega+k
+        \\tilde{\\omega})\\pi b}{\\tilde{\\omega}})
 
     To account for finite measurement time, each shape function is also scaled
-    by :math:`\frac{1}{dt Ns}` where dt is the time between data points and Ns
+    by :math:`\\frac{1}{dt Ns}` where dt is the time between data points and Ns
     is the total number of data points.
 
     For using this fitting shape, data should be FFT'd as:

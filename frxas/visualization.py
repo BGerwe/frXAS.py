@@ -6,8 +6,7 @@ from . import models
 
 def plot_chi(axes, x, data, params=None, add_fit=False,
              model=None, x_units=r'$\mum$', **kwargs):
-    """
-    Plotting real and imaginary components of FR-XAS profiles on separate axes.
+    """Plotting Re and Im components of FR-XAS profiles on separate axes.
 
     Parameters
     ----------
@@ -94,8 +93,7 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
 
 def plot_chi_mag(ax, x, data, params=None, add_fit=False,
                  model=None, x_units=r'$\mum$', **kwargs):
-    """
-    Plotting magnitude of FR-XAS profiles.
+    """Plotting magnitude of FR-XAS profiles.
 
     Parameters
     ----------
