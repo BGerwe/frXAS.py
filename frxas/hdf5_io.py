@@ -709,7 +709,7 @@ def load_lmfit_varis(hdf_file, fit_model):
 
 
 def load_time_domain_fit(filename: str):
-    """Loads and unpacks data in hdf5 file stored by save_time_domain_fit().
+    """Loads hdf5 fit file into lmfit.ModelResult object.
 
     Parameters
     ----------
@@ -730,3 +730,62 @@ def load_time_domain_fit(filename: str):
 
     f.close()
     return fit_model
+
+
+def extract_time_domain_fit(file, suffix, harmonics=1, fit_dict=None):
+    """Extracts essential data from HDF5 fit files needed for modeling.
+
+    Parameters
+    ----------
+    file : :class:`~h5py.File`
+        Class representing an HDF5 file.
+    suffix : str
+        Used for associating position values and absorbance data.
+    harmonics : int
+        Index of highest harmonic coefficients to extract. Should not exceed
+        value of harmonic index time domain data is fit to.
+    fit_dict : dict
+        Object for storing extracted data. A unique dictionary should be used
+        for each gas and frequency condition measured.
+
+    Returns
+    -------
+    fit_dict
+    """
+
+    if not fit_dict:
+        fit_dict = {}
+
+    if 'positions' in fit_dict.keys():
+        fit_dict['positions'][suffix] = float(file.userkws['position'])
+    else:
+        fit_dict['positions'] = {suffix: float(file.userkws['position'])}
+
+    if 'ir_avg' in fit_dict.keys():
+        fit_dict['ir_avg'][suffix] = float(file.userkws['ir_avg'])
+    else:
+        fit_dict['ir_avg'] = {suffix: float(file.userkws['ir_avg'])}
+
+    for k in range(1, harmonics+1):
+        if f'h{k}_re' in fit_dict.keys():
+            fit_dict[f'h{k}_re'][suffix] = file.params[f'h{k}_re_comp'].value
+            fit_dict[f'h{k}_im'][suffix] = file.params[f'h{k}_im_comp'].value
+        else:
+            fit_dict[f'h{k}_re'] = {suffix: file.params[f'h{k}_re_comp'].value}
+            fit_dict[f'h{k}_im'] = {suffix: file.params[f'h{k}_im_comp'].value}
+
+    return fit_dict
+
+
+def dict_vals_to_array(vals):
+    """Converts `dict_values` type to numpy array.
+
+    Parameters
+    ----------
+    vals : dict_values
+
+    Returns
+    -------
+    numpy array
+    """
+    return np.array(list(vals.values()))

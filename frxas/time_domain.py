@@ -74,31 +74,30 @@ def extract_data(file_direc, match_str, start=0, end=-1, irr=100,
         return t, v, j, ir, ir_avg
 
 
-def extract_fit_save(read_direc, write_direc, location_keys, run_str='\\R',
-                     harmonics=1, save_fits=True, xray_disp=True, phase=0,
-                     **fit_kws):
+def extract_fit_save(read_direc, write_direc, file_suffixes, positions=None,
+                     run_str='\\R', harmonics=1, save_fits=True,
+                     xray_disp=True, phase=0, **fit_kws):
 
     if 'ftol' not in fit_kws.keys():
         fit_kws['ftol'] = 1e-13
     if 'xtol' not in fit_kws.keys():
         fit_kws['xtol'] = 1e-13
 
-    for loc in location_keys:  # range(1, n_locs+1):
-        # point = loc_str + f'{str(i)}'
-
-        # Sometimes we did more than 1 run, usually the last one is best
-        all_files = glob.glob(read_direc + loc + run_str + '[0-9] [0-9]*.txt')
+    for i, suffix in enumerate(file_suffixes):
+        # Sometimes we did more than 1 run, so we need to find all runs.
+        # The last run is almost always best.
+        all_files = glob.glob(read_direc+suffix+run_str+'[0-9] [0-9]*.txt')
         last_run = 0
         for files in all_files:
             run_ind = int(files.split('\\')[-1][1])
             if run_ind > last_run:
                 last_run = run_ind
 
-        match_str = loc + run_str \
+        match_str = suffix + run_str \
             + f'{str(last_run)} [0-9]*.txt'
 
-        loc_str = loc.split('\\')[-1]
-        print(f'Analyzing {read_direc} {loc_str} R{last_run}')
+        suffix_str = suffix.split('\\')[-1]
+        print(f'Analyzing {read_direc} {suffix_str} R{last_run}')
 
         try:
             ti, v, j, ir, ir_avg = \
@@ -120,26 +119,25 @@ def extract_fit_save(read_direc, write_direc, location_keys, run_str='\\R',
                 j = j[:-1]
                 ir = ir[:-1]
 
-            j_adj, j_adj_fit = phase_align(ti, v, j, freq_in, b, phase=phase,
-                                           harmonics=harmonics,
-                                           fit_kws=fit_kws)
-            ir_adj, ir_adj_fit = phase_align(ti, v, ir, freq_in, b,
-                                             phase=phase, harmonics=harmonics,
-                                             fit_kws=fit_kws)
-            v_adj, v_adj_fit = phase_align(ti, v, v, freq_in, b, phase=phase,
-                                           harmonics=harmonics,
-                                           fit_kws=fit_kws)
+            _, j_adj_fit = phase_align(ti, v, j, freq_in, b, phase=phase,
+                                       harmonics=harmonics, fit_kws=fit_kws)
+            _, ir_adj_fit = phase_align(ti, v, ir, freq_in, b, phase=phase,
+                                        harmonics=harmonics, fit_kws=fit_kws)
+            _, v_adj_fit = phase_align(ti, v, v, freq_in, b, phase=phase,
+                                       harmonics=harmonics, fit_kws=fit_kws)
 
-            ir_adj_fit.ir_avg = ir_avg
+            ir_adj_fit.userkws['ir_avg'] = ir_avg
+            if positions:
+                ir_adj_fit.userkws['position'] = positions[i]
 
             del ti, v, j, ir
 
             if save_fits:
-                hdf5_io.save_time_domain_fit(write_direc + f" {loc_str}_J",
+                hdf5_io.save_time_domain_fit(write_direc + f" {suffix_str}_J",
                                              j_adj_fit)
-                hdf5_io.save_time_domain_fit(write_direc + f" {loc_str}_Ir",
+                hdf5_io.save_time_domain_fit(write_direc + f" {suffix_str}_Ir",
                                              ir_adj_fit)
-                hdf5_io.save_time_domain_fit(write_direc + f" {loc_str}_V",
+                hdf5_io.save_time_domain_fit(write_direc + f" {suffix_str}_V",
                                              v_adj_fit)
         except Exception:
             print(traceback.format_exc())
