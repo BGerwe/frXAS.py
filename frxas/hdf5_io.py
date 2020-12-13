@@ -7,7 +7,7 @@ from . import time_domain
 
 
 def create_frxas_profile_hdf5(filename: str, gases: list, temp=700):
-    """Makes an HDF5 file to store data for fr-XAS profiles
+    """Makes an HDF5 file to store data for fr-XAS profiles.
 
     Parameters
     ----------
@@ -50,7 +50,7 @@ def create_frxas_profile_hdf5(filename: str, gases: list, temp=700):
 
 
 def open_hdf5(filename: str, mode="r+"):
-    """Opens existing hdf5 file containing FR-XAS data
+    """Opens existing hdf5 file containing FR-XAS data.
 
     Parameters
     ----------
@@ -75,7 +75,7 @@ def open_hdf5(filename: str, mode="r+"):
 
 
 def close_hdf5(filename: str):
-    """Closes specified hdf5 file
+    """Closes specified hdf5 file.
 
     Parameters
     ----------
@@ -100,7 +100,7 @@ def close_hdf5(filename: str):
 
 
 def add_frxas_profile(file, gas, frequency, positions, data, harmonic=1):
-    """Adds data for a single gas and frequency experiment to existing file
+    """Adds data for a single gas and frequency experiment to existing file.
 
     Parameters
     ----------

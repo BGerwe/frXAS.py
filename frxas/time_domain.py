@@ -260,8 +260,7 @@ def fit_windowed_fft(frequencies, signal_fft, freq_in, window_param,
 
 def phase_align(time, reference, signal, freq_in, window_param, phase=0,
                 harmonics=1, return_params=True, fit_kws=None, weights=None):
-    """Adjusts a time-domain reference to a desired phase angle and aligns
-    a time-domain signal to the reference while maintaining phase coherence.
+    """Phase adjusts time-domain signal to a reference signal and given angle.
 
     Parameters
     ----------
@@ -422,7 +421,7 @@ def gauss_window(signal, freq_in, time, window_param):
 
 
 def gauss_fft(frequencies, freq_in, window_param, harmonic=1):
-    """Calculates the gaussian lineshape for FFT fitting
+    """Calculates the gaussian lineshape for FFT fitting.
 
     Parameters
     ----------
