@@ -51,7 +51,8 @@ def create_frxas_profile_hdf5(filename: str, gases: list, temp=700):
 
 
 def open_hdf5(filename: str, mode="r+"):
-    """Opens existing hdf5 file containing frXAS data.
+    """
+    Opens existing hdf5 file containing FR-XAS data.
 
     Parameters
     ----------
@@ -76,7 +77,8 @@ def open_hdf5(filename: str, mode="r+"):
 
 
 def close_hdf5(filename: str):
-    """Closes specified hdf5 file.
+    """
+    Closes specified hdf5 file.
 
     Parameters
     ----------
@@ -95,13 +97,14 @@ def close_hdf5(filename: str):
 
     except TypeError:
         print("Error encountered. Check filename.")
-        pass
+        # pass
 
     return
 
 
 def add_frxas_profile(file, gas, frequency, positions, data, harmonic=1):
-    """Adds data for a single gas and frequency experiment to existing file.
+    """
+    Adds data for a single gas and frequency experiment to existing file.
 
     Parameters
     ----------
@@ -116,7 +119,7 @@ def add_frxas_profile(file, gas, frequency, positions, data, harmonic=1):
     positions : np.ndarray
         Array of measurement positions for data.
     data : np.ndarray
-        Array of frXAS data being added.
+        Array of FR-XAS data being added.
     harmonic : int
         Index of harmonic for data added.
 
@@ -190,7 +193,8 @@ def add_frxas_profile(file, gas, frequency, positions, data, harmonic=1):
 
 
 def print_data_shapes(file):
-    """Prints the name of all data sets within each group of the HDF5 file.
+    """
+    Prints the name of all data sets within each group of the HDF5 file.
 
     Parameters
     ----------
@@ -219,7 +223,8 @@ def print_data_shapes(file):
 
 
 def get_gas_condition(file):
-    """Retrieves the gas conditions of all HDF5 file.
+    """
+    Retrieves the gas conditions of all HDF5 file.
 
     Parameters
     ----------
@@ -251,7 +256,8 @@ def get_gas_condition(file):
 
 
 def adjust_dataset(data, positions, start_index):
-    """Truncates data sets to begin at `start_index` and makes the position
+    """
+    Truncates data sets to begin at `start_index` and makes the position
     values relative to the `start_index` position.
 
     Parameters
@@ -267,7 +273,7 @@ def adjust_dataset(data, positions, start_index):
     Returns
     -------
     np.ndarray
-        Array of data truncated to start_index, has shape m x (x - start_index)
+        Array of data truncated to start_index, has shape m x (x - start_index).
 
     """
     pos = positions
@@ -282,7 +288,8 @@ def adjust_dataset(data, positions, start_index):
 
 
 def get_group_datasets(subgroup, harmonic=1, start_index=None):
-    """Retrieves all datasets stored in one gas group.
+    """
+    Retrieves all datasets stored in one gas group.
 
     Parameters
     ----------
@@ -334,8 +341,9 @@ def get_group_datasets(subgroup, harmonic=1, start_index=None):
     return frequency, start, data, data_adj, pos, pos_adj
 
 
-def get_all_datasets(file, harmonic=1, start_indices=[]):
-    """Retrieves all datasets stored in an HDF5 file.
+def get_all_datasets(file, harmonic=1, start_indices=None):
+    """
+    Retrieves all datasets stored in an HDF5 file.
 
     Parameters
     ----------
@@ -356,6 +364,7 @@ def get_all_datasets(file, harmonic=1, start_indices=[]):
     --------
     print_data_shapes : Displays structure of data in an HDF5 file.
     get_group_datasets : Retrieves data in a single group in an HDF5 file.
+
     """
     f = file
     try:
@@ -363,6 +372,9 @@ def get_all_datasets(file, harmonic=1, start_indices=[]):
 
     except AttributeError:
         f = open_hdf5(file)
+    
+    if not start_indices:
+        start_indices=[]
 
     data_list = []
 
@@ -404,12 +416,29 @@ def get_all_datasets(file, harmonic=1, start_indices=[]):
 
 
 def unpack_data(data_dict, kind='adj'):
-    """
+    """Extracts FR-XAS profiles from hdf5 file.
+
+    Parameters
+    ----------
     data_dict : dict
-        Contains all data of frxas profiles stored in hdf5 file.
+        Contains all data of FR-XAS profiles stored in hdf5 file.
     kind : str
         Options are 'raw' for unmodified data or 'adj' for arrays starting at
         specified index
+
+    Returns
+    -------
+    xs : list
+        List of arrays containing measurement point positions.
+    data : list
+        List of arrays containing complex coefficients of FR-XAS profiles.
+    frequencies : list
+        Measurement frequencies for each FR-XAS profile.
+    gas : list
+        Gas condition for each FR-XAS profile.
+    sizes : list
+        Lengths of profile arrays.
+
     """
     xs, data, freqs, gas, sizes = [], [], [], [], []
 
@@ -444,7 +473,8 @@ def unpack_data(data_dict, kind='adj'):
 
 
 def save_lmfit_fit_statistics(hdf_file, fit_model):
-    """Store fit statistics from `lmfit.ModelResult` in open hdf5 file.
+    """
+    Store fit statistics from `lmfit.ModelResult` in open hdf5 file.
 
     Parameters
     ----------
@@ -490,7 +520,8 @@ def save_lmfit_fit_statistics(hdf_file, fit_model):
 
 
 def save_lmfit_ind_varis(hdf_file, fit_model):
-    """Store independent variables from `lmfit.ModelResult` in open hdf5 file.
+    """
+    Store independent variables from `lmfit.ModelResult` in open hdf5 file.
 
     Parameters
     ----------
@@ -524,7 +555,8 @@ def save_lmfit_ind_varis(hdf_file, fit_model):
 
 
 def save_lmfit_varis(hdf_file, fit_model, save_data):
-    """Store variables from `lmfit.ModelResult` in open hdf5 file.
+    """
+    Store variables from `lmfit.ModelResult` in open hdf5 file.
 
     Parameters
     ----------
@@ -579,7 +611,9 @@ def save_lmfit_varis(hdf_file, fit_model, save_data):
 
 
 def save_time_domain_fit(filename: str, fit_model, save_data=False):
-    """Store most important information from `lmfit.ModelResult` in hdf5 file.
+    """
+    Saves `lmfit.ModelResult` fit stats, `userkws`, and params in hdf5 file.
+
     Parameters
     ----------
     filename : str
@@ -603,12 +637,14 @@ def save_time_domain_fit(filename: str, fit_model, save_data=False):
 
 
 def load_lmfit_fit_statistics(hdf_file):
-    """Loads and unpacks data in hdf5 file stored by save_time_domain_fit().
+    """
+    Loads and unpacks data in hdf5 file stored by save_time_domain_fit().
 
     Parameters
     ----------
     hdf_file : :class:`~h5py.File`
         Class representing an HDF5 file.
+
     Returns
     -------
     fit_model : lmfit.model.ModelResult
@@ -709,12 +745,14 @@ def load_lmfit_varis(hdf_file, fit_model):
 
 
 def load_time_domain_fit(filename: str):
-    """Loads hdf5 fit file into lmfit.ModelResult object.
+    """
+    Loads hdf5 fit file into `lmfit.ModelResult` object.
 
     Parameters
     ----------
     filename : str
         File path name excluding ".h5" extension.
+
     Returns
     -------
     fit_model : lmfit.model.ModelResult
@@ -733,7 +771,8 @@ def load_time_domain_fit(filename: str):
 
 
 def extract_time_domain_fit(file, suffix, harmonics=1, fit_dict=None):
-    """Extracts essential data from HDF5 fit files needed for modeling.
+    """
+    Extracts essential data from HDF5 fit files needed for modeling.
 
     Parameters
     ----------
@@ -751,8 +790,8 @@ def extract_time_domain_fit(file, suffix, harmonics=1, fit_dict=None):
     Returns
     -------
     fit_dict
-    """
 
+    """
     if not fit_dict:
         fit_dict = {}
 
@@ -787,5 +826,6 @@ def dict_vals_to_array(vals):
     Returns
     -------
     numpy array
+
     """
     return np.array(list(vals.values()))

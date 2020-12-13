@@ -5,7 +5,8 @@ from lmfit import Parameters, fit_report, minimizer
 
 
 def dataset_fun(params, i, x, fun):
-    r"""Calculate a function's lineshape from parameters for a single data set.
+    """
+    Calculate a model function profile from fit parameters for one data set.
 
     Parameters
     ----------
@@ -35,6 +36,22 @@ def dataset_fun(params, i, x, fun):
 
 
 def calc_resid(data, model):
+    """
+    Calculates residuals of fit to one data set.
+    
+    Parameters
+    ----------
+    data : np.ndarray
+        Values of FR-XAS profile data.
+    model : np.ndarray
+        Values of fit profile from model function.
+
+    Returns
+    -------
+    resid_c : np.ndarry
+        Residuals.
+
+    """
     resid_c = []
     resid = data - model
 
@@ -48,7 +65,8 @@ def calc_resid(data, model):
 
 
 def objective_fun(params, x, data, fun):
-    r"""Calculate a residuals array for a given model function
+    """
+    Calculate a residuals array of all data sets fit to model function.
 
     Parameters
     ----------
@@ -91,7 +109,8 @@ def objective_fun(params, x, data, fun):
 
 
 def calc_ao(aoo, po2, po2_ref):
-    r"""Calculates an adjusted thermodynamic factor `ao`.
+    """
+    Calculates an adjusted thermodynamic factor `ao`.
 
     Parameters
     ----------
@@ -134,7 +153,8 @@ def calc_ao(aoo, po2, po2_ref):
 
 
 def chi_ideal(x, ao, ld, tg, f):
-    r"""Function for dimensionless vacancy concentrations assuming ideal
+    """
+    Function for dimensionless vacancy concentrations assuming ideal
     behavior and overpotential control.
 
     Parameters
@@ -177,11 +197,6 @@ def chi_ideal(x, ao, ld, tg, f):
         `doi:10.1149/1.3079337 <https://doi.org/10.1149/1.3079337>`_.
 
     """
-    # After closing class docstring, there should be one blank line to
-    # separate following codes (according to PEP257).
-    # But for function, method and module, there should be no blank lines
-    # after closing the docstring.
-
     return -1 / ao * np.exp(-x / ld * np.sqrt(1 + 1j * tg * 2 * np.pi * f))
 
 
@@ -229,17 +244,14 @@ def chi_amp(x, amp, ld, tg, f):
     .. [1] Y. Lu, C. Kreller, and S.B. Adler,
         Journal of The Electrochemical Society, 156, B513-B525 (2009)
         `doi:10.1149/1.3079337 <https://doi.org/10.1149/1.3079337>`_.
-    """
-    # After closing class docstring, there should be one blank line to
-    # separate following codes (according to PEP257).
-    # But for function, method and module, there should be no blank lines
-    # after closing the docstring.
 
+    """
     return amp * np.exp(-x / ld * np.sqrt(1 + 1j * tg * 2 * np.pi * f))
 
 
 def chi_patterned(x, amp=1, gammap=1e-3, ld=15, tg=1, f=1, L=0.6):
-    r"""1D model of ORR on patterned thin film electrode.
+    """
+    1D model of ORR on patterned thin film electrode.
 
     Parameters
     ----------
@@ -266,6 +278,7 @@ def chi_patterned(x, amp=1, gammap=1e-3, ld=15, tg=1, f=1, L=0.6):
     -------
     np.ndarray
         Evaluated function for given length array and parameters.
+
     """
     g_p = gammap
     w = 2 * np.pi * f
@@ -277,7 +290,8 @@ def chi_patterned(x, amp=1, gammap=1e-3, ld=15, tg=1, f=1, L=0.6):
 
 
 def save_fit_report(filename, fit, start_inds=None):
-    r"""Function to save lmfit minimize results from `fit_report`.
+    """
+    Function to save lmfit minimize results from `lmfit.fit_report`.
 
     Parameters
     ----------
@@ -297,33 +311,35 @@ def save_fit_report(filename, fit, start_inds=None):
 
 
 def load_fit_report(filename):
-    r"""Extracts information from saved fit report into a `Parameters` object.
+    """
+    Extracts information from saved fit report into a `Parameters` object.
 
     Parameters
     ----------
     filename: str
         Directory and file name of saved fit report
+
     Returns
     -------
     params: lmfit.MinimizerResult
         Object containing parameter information and fit statsitics from report.
         Information not included in the report is not carried over from the
         original MinimizerResult object.
-    """
 
+    """
     f = open(filename, mode='r')
     lines = f.readlines()
     f.close()
 
-# Start with empty MinimizerResult class and build up based on saved report txt
+    # Start with empty MinimizerResult class and build up based on saved report txt
     mini = minimizer.MinimizerResult()
     mini.ndata = 1
     mini.nfree = 1
     mini.errorbars = False
     mini.params = Parameters()
 
-# Pull out fit statistics values and find positions of "Variables" and
-# "Correlations" sections
+    # Pull out fit statistics values and find positions of "Variables" and
+    # "Correlations" sections
     for i, line in enumerate(lines):
         if '# fitting method' in line:
             mini.method = line.split('=')[-1][1:].split('\n')[0]
@@ -359,7 +375,7 @@ def load_fit_report(filename):
     if 'start_correls' in locals():
         correls = lines[start_correls:end_correls+1]
 
-# Walk through "Variables" section text and use it to reconstruct Parameters
+    # Walk through "Variables" section text and use it to reconstruct Parameters
     for line in varys:
         name_str = re.search(r'[a-zA-Z]+_[0-9]+', line)
         val_str = re.search(r' -?\d+(\.\d+)?', line)
@@ -391,9 +407,9 @@ def load_fit_report(filename):
                 expr = expr_str.group()[4:-1]
                 mini.params[name].expr = expr
 
-# Walk through "Correlations" text and extract that information. Unfortunately,
-# they are output with 3 sig figs, which creates ordering issues in the report
-# since they are sorted by correlation magnitude.
+    # Walk through "Correlations" text and extract that information. Unfortunately,
+    # they are output with 3 sig figs, which creates ordering issues in the report
+    # since they are sorted by correlation magnitude.
     for line in correls:
         vary1_str = re.search(r'C[(][a-zA-Z]+_[0-9]+', line).group()[2:]
         vary2_str = re.search(r'[a-zA-Z]+_[0-9]+[)]', line).group()[:-1]

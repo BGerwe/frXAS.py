@@ -146,7 +146,8 @@ def extract_fit_save(read_direc, write_direc, file_suffixes, positions=None,
 
 
 def freq_bin(freq_in, frequencies, harmonic):
-    """Finds the index of the FFT bin for an input frequency.
+    """
+    Finds the index of the FFT bin for an input frequency.
 
     Parameters
     ----------
@@ -179,7 +180,8 @@ def freq_bin(freq_in, frequencies, harmonic):
 
 
 def get_windowed_fft(time, signal, freq_in, window_param):
-    """Applies gaussian window to signal and calculates the complex FFT.
+    """
+    Applies gaussian window to signal and calculates the complex FFT.
 
     Parameters
     ----------
@@ -206,7 +208,8 @@ def get_windowed_fft(time, signal, freq_in, window_param):
 
 def fit_windowed_fft(frequencies, signal_fft, freq_in, window_param,
                      harmonics=1, fit_kws=None, weights=None):
-    """Fits the windowed fft.
+    """
+    Fits the windowed fft to the lineshape from `fft_shape`.
 
     Parameters
     ----------
@@ -258,7 +261,8 @@ def fit_windowed_fft(frequencies, signal_fft, freq_in, window_param,
 
 def phase_align(time, reference, signal, freq_in, window_param, phase=0,
                 harmonics=1, return_params=True, fit_kws=None, weights=None):
-    """Adjusts a time-domain reference to a desired phase angle and aligns
+    """
+    Adjusts a time-domain reference to a desired phase angle and aligns
     a time-domain signal to the reference while maintaining phase coherence.
 
     Parameters
@@ -362,7 +366,15 @@ def phase_align(time, reference, signal, freq_in, window_param, phase=0,
 
 
 def get_freq(direc, match_str):
-    """
+    """Finds measurement frequency from header of raw data file.
+
+    Parameters
+    ----------
+    direc : str
+        File directory.
+    match_str: str
+        Regex pattern for matching raw data file name.
+
     """
     all_files = glob.glob(os.path.join(direc + match_str))
     head = np.genfromtxt(all_files[0], delimiter='\t', max_rows=1)
@@ -370,13 +382,19 @@ def get_freq(direc, match_str):
 
 
 def sub_mean(data):
-    """
+    """Subtracts mean value from signal.
+
+    Parameters
+    ----------
+    data : np.ndarray
+        Signal data.
     """
     return data - data.mean()
 
 
 def gauss_window(signal, freq_in, time, window_param):
-    """Applies a gaussian windowing function to a time-domain signal.
+    """
+    Applies a gaussian windowing function to a time-domain signal.
 
     Parameters
     ----------
@@ -407,7 +425,8 @@ def gauss_window(signal, freq_in, time, window_param):
 
 
 def gauss_fft(frequencies, freq_in, window_param, harmonic=1):
-    """ Calculates the gaussian lineshape for FFT fitting
+    """
+    Calculates the gaussian lineshape for FFT fitting
 
     Parameters
     ----------
@@ -422,13 +441,13 @@ def gauss_fft(frequencies, freq_in, window_param, harmonic=1):
     harmonic: integer
         Number of harmonics to return indices for where the fundamental
         frequency is harmonic 1
+
     Returns
     -------
     g_k : np.ndarray
         Array for the gaussian lineshape in an FFT
 
     """
-
     f = frequencies
     f_tilde = freq_in
     w_tilde = 2 * np.pi * f_tilde
@@ -446,7 +465,8 @@ def gauss_fft(frequencies, freq_in, window_param, harmonic=1):
 
 
 def dawson_fft(frequencies, freq_in, window_param, harmonic=1):
-    """ Calculates the dawson function lineshape for FFT fitting.
+    """
+    Calculates the dawson function lineshape for FFT fitting.
 
     Parameters
     ----------
@@ -468,7 +488,6 @@ def dawson_fft(frequencies, freq_in, window_param, harmonic=1):
         Array for the dawson function lineshape in an FFT
 
     """
-
     f = frequencies
     f_tilde = freq_in
     w_tilde = 2 * np.pi * f_tilde
@@ -487,7 +506,8 @@ def dawson_fft(frequencies, freq_in, window_param, harmonic=1):
 
 def fft_shape(frequencies, freq_in, window_param, harmonic=1, re_comp=1,
               im_comp=1):
-    r""" Calculates the lineshape of a gaussian windowed signal for fitting.
+    """
+    Calculates the lineshape of a gaussian windowed signal for fitting.
 
     Parameters
     ----------
@@ -585,7 +605,6 @@ def fft_shape(frequencies, freq_in, window_param, harmonic=1, re_comp=1,
     <https://doi.org/10.1016/j.electacta.2005.02.109>`_.
 
     """
-
     f = frequencies
     f_tilde = freq_in
     b = window_param
