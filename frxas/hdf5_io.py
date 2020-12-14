@@ -1,8 +1,10 @@
 import itertools
 import re
+
 import numpy as np
 import h5py
 import lmfit
+
 from . import time_domain
 
 
@@ -798,6 +800,83 @@ def extract_time_domain_fit(file, suffix, harmonics=1, fit_dict=None):
             fit_dict[f'h{k}_im'] = {suffix: file.params[f'h{k}_im_comp'].value}
 
     return fit_dict
+
+
+def extract_DC_profile(neg_df, harmonics=1, pos_df=None):
+    """Package DC data in a dictionary with same structure as time domain.
+
+    Parameters
+    ----------
+    neg_df : dataframe
+        Negative bias data with columns ['z', 'ocv', 'bias'].
+    harmonics : int
+        Index of highest harmonic coefficients to extract. Should not exceed
+        value of harmonic index time domain data is fit to.
+    pos_df : dataframe, optional
+        Positive bias data with columns ['z', 'ocv', 'bias'].
+
+    Returns
+    -------
+    dc_dict : dict
+
+    """
+    neg_df_fwd = neg_df.where(neg_df.z >= 0).dropna()
+    try:
+        pos_df_fwd = pos_df.where(pos_df.z >= 0).dropna()
+        pos_df = True
+        # Make sure the positions are the same before adding positive bias
+        # data to neg_df
+        assert (neg_df_fwd.z == pos_df_fwd.z).all()
+        neg_df_fwd['ocv_pos'] = pos_df_fwd.ocv
+        neg_df_fwd['bias_pos'] = pos_df_fwd.bias
+    except AttributeError:
+        pass
+
+    dc_dict = {}
+    for i, row in neg_df_fwd.iterrows():
+        if 'positions' in dc_dict.keys():
+            dc_dict['positions'][f'{i}'] = row.z
+        else:
+            dc_dict['positions'] = {f'{i}': row.z}
+
+        # Absorbance average in FR-XAS data should be analogous to ocv in
+        # DC data. When positive bias data is provided, take average.
+        if pos_df:
+            ocv_val = np.mean([row.ocv, row.ocv_pos])
+        else:
+            ocv_val = row.ocv
+
+        if 'ir_avg' in dc_dict.keys():
+            dc_dict['ir_avg'][f'{i}'] = ocv_val
+        else:
+            dc_dict['ir_avg'] = {f'{i}': ocv_val}
+
+        # For better comparison to oscillatory data, we take mean of difference
+        # between negative and positive bias, if positive data is given.
+        if pos_df:
+            neg_val = (row.bias - row.ocv) / row.ocv
+            pos_val = (row.bias_pos - row.ocv_pos) / row.ocv_pos
+            val = (neg_val - pos_val) / 2
+        else:
+            val = (row.bias - row.ocv) / row.ocv
+
+        if 'h1_re' in dc_dict.keys():
+            dc_dict['h1_re'][f'{i}'] = val
+            dc_dict['h1_im'][f'{i}'] = 0
+        else:
+            dc_dict['h1_re'] = {f'{i}': val}
+            dc_dict['h1_im'] = {f'{i}': 0}
+
+        # DC data is nonlinear, but obviously there are not harmonics.
+        for k in range(2, harmonics+1):
+            if f'h{k}_re' in dc_dict.keys():
+                dc_dict[f'h{k}_re'][f'{i}'] = 0
+                dc_dict[f'h{k}_im'][f'{i}'] = 0
+            else:
+                dc_dict[f'h{k}_re'] = {f'{i}': 0}
+                dc_dict[f'h{k}_im'] = {f'{i}': 0}
+
+    return dc_dict
 
 
 def dict_vals_to_array(vals):
