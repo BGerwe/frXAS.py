@@ -101,7 +101,8 @@ def close_hdf5(filename: str):
     return
 
 
-def add_frxas_profile(file, gas, frequency, positions, data, harmonic=1):
+def add_frxas_profile(file, gas, frequency, positions, data, harmonic=1,
+                      ir_avgs=[]):
     """Adds data for a single gas and frequency experiment to existing file.
 
     Parameters
@@ -120,6 +121,9 @@ def add_frxas_profile(file, gas, frequency, positions, data, harmonic=1):
         Array of FR-XAS data being added.
     harmonic : int
         Index of harmonic for data added.
+    ir_avgs: array-like, optional
+        Absorbance signal averages for FR-XAS profiles, or OCV absorbance for
+        DC profiles. This represents the absorbance at equilibrium.
 
     Notes
     -----
@@ -151,6 +155,9 @@ def add_frxas_profile(file, gas, frequency, positions, data, harmonic=1):
     """
     if data.shape[-1] != positions.shape[-1]:
         raise ValueError('Data and position shapes don\'t match')
+    # TODO: Add size checking for ir_avgs
+    # if (ir_avgs).all() and data.shape[-1] != len(ir_avgs):
+    #   raise ValueError('Position and ir_avgs shapes don\'t match')
 
     f = file
     group = str(gas)
@@ -177,15 +184,19 @@ def add_frxas_profile(file, gas, frequency, positions, data, harmonic=1):
 
         # Positions will be shared across all harmonics within each frequency
         f[group][subgroup].attrs['Positions'] = positions
+
+        if len(ir_avgs) > 0:
+            f[group][subgroup].attrs['Equilibrium Absorbance'] = ir_avgs
+
         # Not really necessary, but adding exp. conditions as attributes
         f[group][subgroup].attrs['Frequency'] = frequency
-        print(float(gas.split('%')[0]) / 100)
         f[group][subgroup].attrs['Gas'] = float(gas.split('%')[0]) / 100
         f[group].attrs['Gas'] = float(gas.split('%')[0]) / 100
 
     except (KeyError, TypeError):
         print('Data entry unsuccessful')
         return
+    print(f"Added {dset} to {float(gas.split('%')[0]) / 100}% {frequency} Hz")
 
     return
 
@@ -309,6 +320,12 @@ def get_group_datasets(subgroup, harmonic=1, start_index=None):
 
     frequency = subgroup.attrs['Frequency']
     pos = subgroup.attrs.get('Positions')
+
+    if 'Equilibrium Absorbance' in subgroup.attrs.keys():
+        ir_avgs = subgroup.attrs['Equilibrium Absorbance']
+    else:
+        ir_avgs = []
+
     try:
         dset = subgroup[f'Harmonic {harmonic}']
     except KeyError:
@@ -331,7 +348,7 @@ def get_group_datasets(subgroup, harmonic=1, start_index=None):
         data = np.array(dset)
         data_adj, pos_adj = adjust_dataset(data, pos, start)
 
-    return frequency, start, data, data_adj, pos, pos_adj
+    return frequency, start, data, data_adj, pos, pos_adj, ir_avgs
 
 
 def get_all_datasets(file, harmonic=1, start_indices=None):
@@ -376,15 +393,15 @@ def get_all_datasets(file, harmonic=1, start_indices=None):
         data_dict['gas'] = group.attrs.get('Gas')
 
         # Make lists of all info within a gass condition
-        frequencies, starts, data, data_adj = [], [], [], []
+        frequencies, starts, data, data_adj, ir_avgs = [], [], [], [], []
         posi, posi_adj = [], []
         for j, subgroup in enumerate(group.keys()):
             if group[subgroup].keys() and len(start_indices) > 0:
-                frequency, start, dat, dat_adj, pos, pos_adj = \
+                frequency, start, dat, dat_adj, pos, pos_adj, ir_avg = \
                     get_group_datasets(group[subgroup], harmonic=harmonic,
                                        start_index=start_indices[i][j])
             elif group[subgroup].keys() and len(start_indices) == 0:
-                frequency, start, dat, dat_adj, pos, pos_adj = \
+                frequency, start, dat, dat_adj, pos, pos_adj, ir_avg = \
                     get_group_datasets(group[subgroup], harmonic=harmonic)
             else:
                 print(group[subgroup], ' is empty.')
@@ -395,6 +412,7 @@ def get_all_datasets(file, harmonic=1, start_indices=None):
             data_adj.append(dat_adj)
             posi.append(pos)
             posi_adj.append(pos_adj)
+            ir_avgs.append(ir_avg)
 
         data_dict['frequencies'] = frequencies
         data_dict['starts'] = starts
@@ -402,6 +420,8 @@ def get_all_datasets(file, harmonic=1, start_indices=None):
         data_dict['data_adj'] = data_adj
         data_dict['positions'] = posi
         data_dict['positions_adj'] = posi_adj
+        if len(ir_avgs) > 0:
+            data_dict['ir_avgs'] = ir_avgs
         data_list.append(data_dict)
 
     f.close()
@@ -425,6 +445,8 @@ def unpack_data(data_dict, kind='adj'):
         List of arrays containing measurement point positions.
     data : list
         List of arrays containing complex coefficients of FR-XAS profiles.
+    ir_avgs : list
+        List of arrays containing equilibrium absorbance values.
     frequencies : list
         Measurement frequencies for each FR-XAS profile.
     gas : list
@@ -433,7 +455,7 @@ def unpack_data(data_dict, kind='adj'):
         Lengths of profile arrays.
 
     """
-    xs, data, freqs, gas, sizes = [], [], [], [], []
+    xs, data, ir_avgs, freqs, gas, sizes = [], [], [], [], [], []
 
     if kind == 'adj':
         kind = '_adj'
@@ -443,26 +465,37 @@ def unpack_data(data_dict, kind='adj'):
         raise ValueError(f"Invalid `kind` selection. Valid choices are \'adj\' \
                          or \'raw\', but {kind} was provided.")
 
+    # Iterate through each hdf5 group (corresponding to gas condition)
     for group in data_dict:
-        x, dat = [], []
+        x, dat, ir_avg = [], [], []
         x = group[f'positions{kind}']
+        frequencies = group['frequencies']
+        # Unpack list of arrays of complex coefficients for each hdf5 subgroup
+        # (corresponding to frequency measured)
         for dset in group[f'data{kind}']:
             dat.append(np.array(dset[0] + 1j * dset[1]))
             gas.append(group['gas'])
+
+        # Unpack list of arrays of equilibrium absorbances
+        for dset in group['ir_avgs']:
+            ir_avg.append(dset)
+
         # Adding individual data sets to list, sorted by frequency
-        xs.append([a for _, a in sorted(zip(group['frequencies'], x))])
-        data.append([b for _, b in sorted(zip(group['frequencies'], dat))])
-        freqs.append(sorted(group['frequencies']))
+        xs.append([a for _, a in sorted(zip(frequencies, x))])
+        data.append([b for _, b in sorted(zip(frequencies, dat))])
+        ir_avgs.append([c for _, c in sorted(zip(frequencies, ir_avg))])
+        freqs.append(sorted(frequencies))
         # Tracks how many datasets per gas condition
         sizes.append(sum(1 for c in dat))
 
     # Flatten list of lists into list of arrays
     data = list(itertools.chain.from_iterable(a for a in data))
     xs = list(itertools.chain.from_iterable(b for b in xs))
+    ir_avgs = list(itertools.chain.from_iterable(c for c in ir_avgs))
 
     frequencies = [item for sublist in freqs for item in sublist]
 
-    return xs, data, frequencies, gas, sizes
+    return xs, data, ir_avgs, frequencies, gas, sizes
 
 
 def save_lmfit_fit_statistics(hdf_file, fit_model):
