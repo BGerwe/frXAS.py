@@ -76,7 +76,7 @@ def extract_data(file_direc, match_str, start=0, end=-1, irr=100,
 
 def extract_fit_save(read_direc, write_direc, file_suffixes, positions=None,
                      run_str='\\R', harmonics=1, save_fits=True,
-                     xray_disp=True, phase=0, **fit_kws):
+                     xray_disp=True, invert_vj=True, phase=0, **fit_kws):
 
     if 'ftol' not in fit_kws.keys():
         fit_kws['ftol'] = 1e-13
@@ -103,7 +103,9 @@ def extract_fit_save(read_direc, write_direc, file_suffixes, positions=None,
             ti, v, j, ir, ir_avg = \
                 extract_data(read_direc, match_str, start=0, end=None,
                              xray_disp=xray_disp)
-
+            if invert_vj:
+                v = -v
+                j = -j
             freq_in = get_freq(read_direc, match_str)
 
             ns = ti.size

@@ -404,6 +404,7 @@ def get_all_datasets(file, harmonic=1, start_indices=None):
         data_dict['positions_adj'] = posi_adj
         data_list.append(data_dict)
 
+    f.close()
     return data_list
 
 
@@ -820,20 +821,19 @@ def extract_DC_profile(neg_df, harmonics=1, pos_df=None):
     dc_dict : dict
 
     """
-    neg_df_fwd = neg_df.where(neg_df.z >= 0).dropna()
     try:
-        pos_df_fwd = pos_df.where(pos_df.z >= 0).dropna()
-        pos_df = True
         # Make sure the positions are the same before adding positive bias
         # data to neg_df
-        assert (neg_df_fwd.z == pos_df_fwd.z).all()
-        neg_df_fwd['ocv_pos'] = pos_df_fwd.ocv
-        neg_df_fwd['bias_pos'] = pos_df_fwd.bias
+        z_match = (neg_df.z == pos_df.z).all()
+        assert z_match
+        neg_df['ocv_pos'] = pos_df.ocv
+        neg_df['bias_pos'] = pos_df.bias
     except AttributeError:
+        z_match = False
         pass
 
     dc_dict = {}
-    for i, row in neg_df_fwd.iterrows():
+    for i, row in neg_df.iterrows():
         if 'positions' in dc_dict.keys():
             dc_dict['positions'][f'{i}'] = row.z
         else:
@@ -841,7 +841,7 @@ def extract_DC_profile(neg_df, harmonics=1, pos_df=None):
 
         # Absorbance average in FR-XAS data should be analogous to ocv in
         # DC data. When positive bias data is provided, take average.
-        if pos_df:
+        if z_match:
             ocv_val = np.mean([row.ocv, row.ocv_pos])
         else:
             ocv_val = row.ocv
@@ -853,7 +853,7 @@ def extract_DC_profile(neg_df, harmonics=1, pos_df=None):
 
         # For better comparison to oscillatory data, we take mean of difference
         # between negative and positive bias, if positive data is given.
-        if pos_df:
+        if z_match:
             neg_val = (row.bias - row.ocv) / row.ocv
             pos_val = (row.bias_pos - row.ocv_pos) / row.ocv_pos
             val = (neg_val - pos_val) / 2
