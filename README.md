@@ -1,6 +1,7 @@
 [![Build Status](https://travis-ci.org/BGerwe/frXAS.py.svg?branch=master)](https://travis-ci.org/BGerwe/frXAS.py)
 [![Coverage Status](https://coveralls.io/repos/github/BGerwe/frXAS.py/badge.svg?branch=master)](https://coveralls.io/github/BGerwe/frXAS.py?branch=master)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/f67339e60b76437c9cf27e3488722ca0)](https://www.codacy.com/gh/BGerwe/frXAS.py/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=BGerwe/frXAS.py&amp;utm_campaign=Badge_Grade)
+[![DOI](https://zenodo.org/badge/238539643.svg)](https://zenodo.org/badge/latestdoi/238539643)
 
 # frXAS.py
 A package to process, analyze, and interpret data from frequency-resolved X-ray absorption spectroscopy measurements.
