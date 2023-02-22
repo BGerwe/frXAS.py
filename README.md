@@ -10,3 +10,5 @@ A package to process, analyze, and interpret data from frequency-resolved X-ray 
 This package is very much under construction and, frankly, very limited for the time being. Everything is designed
 around my own methods of data collection, and therefore may be very limited. Creating this package is an attempt to
 be transparent about the details of data processing and analysis in forthcoming journal articles.
+
+## Installation
