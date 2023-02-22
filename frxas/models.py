@@ -53,8 +53,8 @@ def calc_resid(data, model):
     resid_c = []
     resid = data - model
 
-    if resid.dtype == np.complex:
-        resid_c = resid.ravel().view(np.float)
+    if resid.dtype == complex:
+        resid_c = resid.ravel().view(float)
     else:
         resid_c = resid
     resid = None
