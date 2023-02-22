@@ -14,31 +14,38 @@ from . import hdf5_io
 
 def sort_files(all_files):
     # First split gets to R{last_run}, second split gets file index
-    return int(all_files.split('\\')[-1].split('.txt')[0][-3:])
+    return int(all_files.split("\\")[-1].split(".txt")[0][-3:])
 
 
-def extract_data(file_direc, match_str, start=0, end=-1, irr=100,
-                 xray_disp=True, xray_raw=False, skip_head=1,
-                 sort_func=sort_files):
-    """
-    """
+def extract_data(
+    file_direc,
+    match_str,
+    start=0,
+    end=-1,
+    irr=100,
+    xray_disp=True,
+    xray_raw=False,
+    skip_head=1,
+    sort_func=sort_files,
+):
+    """ """
 
     all_files = glob.glob(os.path.join(file_direc + match_str))
     all_files.sort(key=sort_func)
 
     if len(all_files[start:end]) == 0:
-        print(f'No files in list with start={start} and end={end}, please',
-              ' extend range')
+        print(
+            f"No files in list with start={start} and end={end}, please",
+            " extend range",
+        )
         return
 
     for i, file in enumerate(all_files[start:end]):
         if not i:
-            data = np.array(read_csv(file, delimiter='\t', header=None,
-                                     skiprows=skip_head))
+            data = np.array(read_csv(file, delimiter="\t", header=None, skiprows=skip_head))
             t = data[:, 0]
         else:
-            dum = np.array(read_csv(file, delimiter='\t', header=None,
-                                    skiprows=skip_head))
+            dum = np.array(read_csv(file, delimiter="\t", header=None, skiprows=skip_head))
             data = np.append(data, dum, axis=0)
 
             # Avoid repeating time point where t=0 at the beginning of each
@@ -74,42 +81,50 @@ def extract_data(file_direc, match_str, start=0, end=-1, irr=100,
         return t, v, j, ir, ir_avg
 
 
-def extract_fit_save(read_direc, write_direc, file_suffixes, positions=None,
-                     run_str='\\R', harmonics=1, save_fits=True,
-                     xray_disp=True, invert_vj=True, phase=0, **fit_kws):
-
-    if 'ftol' not in fit_kws.keys():
-        fit_kws['ftol'] = 1e-13
-    if 'xtol' not in fit_kws.keys():
-        fit_kws['xtol'] = 1e-13
+def extract_fit_save(
+    read_direc,
+    write_direc,
+    file_suffixes,
+    positions=None,
+    run_str="\\R",
+    harmonics=1,
+    save_fits=True,
+    xray_disp=True,
+    invert_vj=True,
+    phase=0,
+    **fit_kws,
+):
+    if "ftol" not in fit_kws.keys():
+        fit_kws["ftol"] = 1e-13
+    if "xtol" not in fit_kws.keys():
+        fit_kws["xtol"] = 1e-13
 
     for i, suffix in enumerate(file_suffixes):
         # Sometimes we did more than 1 run, so we need to find all runs.
         # The last run is almost always best.
-        all_files = glob.glob(read_direc+suffix+run_str+'[0-9] [0-9]*.txt')
+        all_files = glob.glob(read_direc + suffix + run_str + "[0-9] [0-9]*.txt")
         last_run = 0
         for files in all_files:
-            run_ind = int(files.split('\\')[-1][1])
+            run_ind = int(files.split("\\")[-1][1])
             if run_ind > last_run:
                 last_run = run_ind
 
-        match_str = suffix + run_str \
-            + f'{str(last_run)} [0-9]*.txt'
+        match_str = suffix + run_str + f"{str(last_run)} [0-9]*.txt"
 
-        suffix_str = suffix.split('\\')[-1]
-        print(f'Analyzing {read_direc} {suffix_str} R{last_run}')
+        suffix_str = suffix.split("\\")[-1]
+        print(f"Analyzing {read_direc} {suffix_str} R{last_run}")
 
         try:
-            ti, v, j, ir, ir_avg = \
-                extract_data(read_direc, match_str, start=0, end=None,
-                             xray_disp=xray_disp)
+            ti, v, j, ir, ir_avg = extract_data(
+                read_direc, match_str, start=0, end=None, xray_disp=xray_disp
+            )
             if invert_vj:
                 v = -v
                 j = -j
             freq_in = get_freq(read_direc, match_str)
 
             ns = ti.size
-            b = 0.1 * freq_in * (ti[-1]+ti[1])
+            b = 0.1 * freq_in * (ti[-1] + ti[1])
 
             # Make sure signals have even length to avoid 0 Hz bin shift.
             # Windowing in `phase_align()` will prevent aliasing from
@@ -121,26 +136,26 @@ def extract_fit_save(read_direc, write_direc, file_suffixes, positions=None,
                 j = j[:-1]
                 ir = ir[:-1]
 
-            _, j_adj_fit = phase_align(ti, v, j, freq_in, b, phase=phase,
-                                       harmonics=harmonics, fit_kws=fit_kws)
-            _, ir_adj_fit = phase_align(ti, v, ir, freq_in, b, phase=phase,
-                                        harmonics=harmonics, fit_kws=fit_kws)
-            _, v_adj_fit = phase_align(ti, v, v, freq_in, b, phase=phase,
-                                       harmonics=harmonics, fit_kws=fit_kws)
+            _, j_adj_fit = phase_align(
+                ti, v, j, freq_in, b, phase=phase, harmonics=harmonics, fit_kws=fit_kws
+            )
+            _, ir_adj_fit = phase_align(
+                ti, v, ir, freq_in, b, phase=phase, harmonics=harmonics, fit_kws=fit_kws
+            )
+            _, v_adj_fit = phase_align(
+                ti, v, v, freq_in, b, phase=phase, harmonics=harmonics, fit_kws=fit_kws
+            )
 
-            ir_adj_fit.userkws['ir_avg'] = ir_avg
+            ir_adj_fit.userkws["ir_avg"] = ir_avg
             if positions:
-                ir_adj_fit.userkws['position'] = positions[i]
+                ir_adj_fit.userkws["position"] = positions[i]
 
             del ti, v, j, ir
 
             if save_fits:
-                hdf5_io.save_time_domain_fit(write_direc + f" {suffix_str}_J",
-                                             j_adj_fit)
-                hdf5_io.save_time_domain_fit(write_direc + f" {suffix_str}_Ir",
-                                             ir_adj_fit)
-                hdf5_io.save_time_domain_fit(write_direc + f" {suffix_str}_V",
-                                             v_adj_fit)
+                hdf5_io.save_time_domain_fit(write_direc + f" {suffix_str}_J", j_adj_fit)
+                hdf5_io.save_time_domain_fit(write_direc + f" {suffix_str}_Ir", ir_adj_fit)
+                hdf5_io.save_time_domain_fit(write_direc + f" {suffix_str}_V", v_adj_fit)
         except Exception:
             print(traceback.format_exc())
             continue
@@ -171,10 +186,10 @@ def freq_bin(freq_in, frequencies, harmonic):
     bins = np.ones((harmonic, 2), dtype=int)
     for i in range(0, harmonic):
         try:
-            bins[i, 0] = np.isclose(frequencies, -freq_in * (i+1)).nonzero()[0]
-            bins[i, 1] = np.isclose(frequencies, freq_in * (i+1)).nonzero()[0]
+            bins[i, 0] = np.isclose(frequencies, -freq_in * (i + 1)).nonzero()[0]
+            bins[i, 1] = np.isclose(frequencies, freq_in * (i + 1)).nonzero()[0]
         except ValueError:
-            print("Harmonic {} not found in frequency list".format(i+1))
+            print("Harmonic {} not found in frequency list".format(i + 1))
             return bins[:i]
 
     return bins
@@ -203,12 +218,19 @@ def get_windowed_fft(time, signal, freq_in, window_param):
     """
     ns = np.size(time)
     sig_win = gauss_window(signal, freq_in, time, window_param)
-    sig_win_fft = fft.fftshift(fft.fft(sig_win)/(ns * np.pi))
+    sig_win_fft = fft.fftshift(fft.fft(sig_win) / (ns * np.pi))
     return sig_win_fft
 
 
-def fit_windowed_fft(frequencies, signal_fft, freq_in, window_param,
-                     harmonics=1, fit_kws=None, weights=None):
+def fit_windowed_fft(
+    frequencies,
+    signal_fft,
+    freq_in,
+    window_param,
+    harmonics=1,
+    fit_kws=None,
+    weights=None,
+):
     """Fits the windowed fft to the lineshape from `fft_shape`.
 
     Parameters
@@ -241,27 +263,48 @@ def fit_windowed_fft(frequencies, signal_fft, freq_in, window_param,
     # Change range to start from 0 to capture DC behavior, which is nominally
     # subtracted, but may be unavoidable in X-ray data from changing incident
     # beam flux. Voltage and current shouldn't have significant DC components.
-    for i in range(0, harmonics+1):
+    for i in range(0, harmonics + 1):
         if model:
-            model += lmfit.Model(fft_shape, prefix=f'h{i}_', independent_vars=[
-                                 'frequencies', 'freq_in', 'window_param'],
-                                 fit_kws=fit_kws)
+            model += lmfit.Model(
+                fft_shape,
+                prefix=f"h{i}_",
+                independent_vars=["frequencies", "freq_in", "window_param"],
+                fit_kws=fit_kws,
+            )
         else:
-            model = lmfit.Model(fft_shape, prefix=f'h{i}_', independent_vars=[
-                                'frequencies', 'freq_in', 'window_param'],
-                                fit_kws=fit_kws)
-        params.add('h%i_harmonic' % i, value=i, vary=False)
-        params.add('h%i_re_comp' % i, value=0)
-        params.add('h%i_im_comp' % i, value=-1)
+            model = lmfit.Model(
+                fft_shape,
+                prefix=f"h{i}_",
+                independent_vars=["frequencies", "freq_in", "window_param"],
+                fit_kws=fit_kws,
+            )
+        params.add("h%i_harmonic" % i, value=i, vary=False)
+        params.add("h%i_re_comp" % i, value=0)
+        params.add("h%i_im_comp" % i, value=-1)
 
-    model_fit = model.fit(signal_fft, params=params, frequencies=frequencies,
-                          freq_in=freq_in, window_param=window_param,
-                          weights=weights)
+    model_fit = model.fit(
+        signal_fft,
+        params=params,
+        frequencies=frequencies,
+        freq_in=freq_in,
+        window_param=window_param,
+        weights=weights,
+    )
     return model_fit
 
 
-def phase_align(time, reference, signal, freq_in, window_param, phase=0,
-                harmonics=1, return_params=True, fit_kws=None, weights=None):
+def phase_align(
+    time,
+    reference,
+    signal,
+    freq_in,
+    window_param,
+    phase=0,
+    harmonics=1,
+    return_params=True,
+    fit_kws=None,
+    weights=None,
+):
     """Phase adjusts time-domain signal to a reference signal and given angle.
 
     Parameters
@@ -304,12 +347,24 @@ def phase_align(time, reference, signal, freq_in, window_param, phase=0,
         fit_kws = {}
 
     # Now fit both models. This can take a long time with large data files.
-    ref_fit = fit_windowed_fft(freqs, ref_fft, freq_in, window_param,
-                               harmonics=harmonics, fit_kws=fit_kws,
-                               weights=weights)
-    sig_fit = fit_windowed_fft(freqs, sig_fft, freq_in, window_param,
-                               harmonics=harmonics, fit_kws=fit_kws,
-                               weights=weights)
+    ref_fit = fit_windowed_fft(
+        freqs,
+        ref_fft,
+        freq_in,
+        window_param,
+        harmonics=harmonics,
+        fit_kws=fit_kws,
+        weights=weights,
+    )
+    sig_fit = fit_windowed_fft(
+        freqs,
+        sig_fft,
+        freq_in,
+        window_param,
+        harmonics=harmonics,
+        fit_kws=fit_kws,
+        weights=weights,
+    )
     del ref_fft, sig_fft
 
     # Pull out magnitudes and phase angles of harmonics into a dict so
@@ -318,38 +373,42 @@ def phase_align(time, reference, signal, freq_in, window_param, phase=0,
     ref_comps = {}
     sig_comps = {}
 
-    for i in range(1, harmonics+1):
-        ref_comps[f'ang_{i}'] = \
-            np.angle(ref_fit.params[f'h{i}_re_comp'].value + 1j *
-                     ref_fit.params[f'h{i}_im_comp'].value)
-        ref_comps[f'mag_{i}'] = \
-            np.abs(ref_fit.params[f'h{i}_re_comp'].value + 1j *
-                   ref_fit.params[f'h{i}_im_comp'].value)
-        sig_comps[f'ang_{i}'] = \
-            np.angle(sig_fit.params[f'h{i}_re_comp'].value + 1j *
-                     sig_fit.params[f'h{i}_im_comp'].value)
-        sig_comps[f'mag_{i}'] = \
-            np.abs(sig_fit.params[f'h{i}_re_comp'].value + 1j *
-                   sig_fit.params[f'h{i}_im_comp'].value)
+    for i in range(1, harmonics + 1):
+        ref_comps[f"ang_{i}"] = np.angle(
+            ref_fit.params[f"h{i}_re_comp"].value + 1j * ref_fit.params[f"h{i}_im_comp"].value
+        )
+        ref_comps[f"mag_{i}"] = np.abs(
+            ref_fit.params[f"h{i}_re_comp"].value + 1j * ref_fit.params[f"h{i}_im_comp"].value
+        )
+        sig_comps[f"ang_{i}"] = np.angle(
+            sig_fit.params[f"h{i}_re_comp"].value + 1j * sig_fit.params[f"h{i}_im_comp"].value
+        )
+        sig_comps[f"mag_{i}"] = np.abs(
+            sig_fit.params[f"h{i}_re_comp"].value + 1j * sig_fit.params[f"h{i}_im_comp"].value
+        )
 
     # Desired phase angle to radians and find adjustment factor
-    phs = phase * np.pi/180
-    ang_adj = phs - ref_comps['ang_1']
+    phs = phase * np.pi / 180
+    ang_adj = phs - ref_comps["ang_1"]
 
     # Adjust real an imag component of each harmonic by adjustment factor
     # times harmonic index
 
-    for i in range(1, harmonics+1):
-        ref_fit.params[f'h{i}_re_comp'].value = \
-            np.cos(ref_comps[f'ang_{i}'] + ang_adj * i) * ref_comps[f'mag_{i}']
-        ref_fit.params[f'h{i}_im_comp'].value = \
-            np.sin(ref_comps[f'ang_{i}'] + ang_adj * i) * ref_comps[f'mag_{i}']
-        sig_fit.params[f'h{i}_re_comp'].value = \
-            np.cos(sig_comps[f'ang_{i}'] + ang_adj * i) * sig_comps[f'mag_{i}']
-        sig_fit.params[f'h{i}_im_comp'].value = \
-            np.sin(sig_comps[f'ang_{i}'] + ang_adj * i) * sig_comps[f'mag_{i}']
+    for i in range(1, harmonics + 1):
+        ref_fit.params[f"h{i}_re_comp"].value = (
+            np.cos(ref_comps[f"ang_{i}"] + ang_adj * i) * ref_comps[f"mag_{i}"]
+        )
+        ref_fit.params[f"h{i}_im_comp"].value = (
+            np.sin(ref_comps[f"ang_{i}"] + ang_adj * i) * ref_comps[f"mag_{i}"]
+        )
+        sig_fit.params[f"h{i}_re_comp"].value = (
+            np.cos(sig_comps[f"ang_{i}"] + ang_adj * i) * sig_comps[f"mag_{i}"]
+        )
+        sig_fit.params[f"h{i}_im_comp"].value = (
+            np.sin(sig_comps[f"ang_{i}"] + ang_adj * i) * sig_comps[f"mag_{i}"]
+        )
 
-    sig = fft.ifft(fft.ifftshift(sig_fit.eval()*(ns*np.pi)))
+    sig = fft.ifft(fft.ifftshift(sig_fit.eval() * (ns * np.pi)))
     # Something about this ifft makes the adjusted time-domain signal not
     # decay to 0. Perhaps it's a limit of numerical accuracy. Regardless, it
     # distorts the fft compared to the original and makes it appear like the
@@ -376,7 +435,7 @@ def get_freq(direc, match_str):
 
     """
     all_files = glob.glob(os.path.join(direc + match_str))
-    head = np.genfromtxt(all_files[0], delimiter='\t', max_rows=1)
+    head = np.genfromtxt(all_files[0], delimiter="\t", max_rows=1)
     return head[2]
 
 
@@ -416,7 +475,7 @@ def gauss_window(signal, freq_in, time, window_param):
     t = time
     b = window_param
 
-    window = np.exp((-f ** 2 * t ** 2) / b ** 2)
+    window = np.exp((-(f**2) * t**2) / b**2)
     win_sig = window * signal
 
     return win_sig
@@ -456,7 +515,7 @@ def gauss_fft(frequencies, freq_in, window_param, harmonic=1):
 
     x = ((f - k * f_tilde) * np.pi * b) / f_tilde
 
-    g_k = (b * np.sqrt(np.pi) / (dt * ns * w_tilde)) * np.exp(-x**2)
+    g_k = (b * np.sqrt(np.pi) / (dt * ns * w_tilde)) * np.exp(-(x**2))
 
     return g_k
 
@@ -500,8 +559,7 @@ def dawson_fft(frequencies, freq_in, window_param, harmonic=1):
     return d_k
 
 
-def fft_shape(frequencies, freq_in, window_param, harmonic=1, re_comp=1,
-              im_comp=1):
+def fft_shape(frequencies, freq_in, window_param, harmonic=1, re_comp=1, im_comp=1):
     """Calculates the lineshape of a gaussian windowed signal for fitting.
 
     Parameters
@@ -619,7 +677,8 @@ def fft_shape(frequencies, freq_in, window_param, harmonic=1, re_comp=1,
     d_pk = dawson_fft(f, f_tilde, b, k)
     d_nk = dawson_fft(f, f_tilde, b, -k)
 
-    fft_shape = 0.5 * (vpk * (g_pk + g_nk) + vppk * (d_pk - d_nk)) + \
-        1j / 2 * (vppk * (g_pk - g_nk) + vpk * (-d_pk - d_nk))
+    fft_shape = 0.5 * (vpk * (g_pk + g_nk) + vppk * (d_pk - d_nk)) + 1j / 2 * (
+        vppk * (g_pk - g_nk) + vpk * (-d_pk - d_nk)
+    )
 
     return fft_shape

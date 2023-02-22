@@ -1,0 +1,63 @@
+[tool.pytest.ini_options]
+addopts = "-s -p no:warnings"
+log_cli = 1
+log_cli_level = "INFO"
+log_cli_format = "[pytest][%(asctime)s][%(levelname)s][%(module)s][%(funcName)s] %(message)s"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+log_level = "INFO"
+
+[tool.coverage.run]
+branch = true
+source = [
+    "frxas"
+]
+
+[tool.coverage.report]
+
+exclude_lines = [
+    "if self.debug:",
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:"
+]
+
+ignore_errors = true
+omit = [
+    "tests/*",
+    "setup.py",
+]
+
+[tool.black]
+line-length = 99
+
+[tool.poetry]
+name = "frxas"
+version = "0.1.1"
+description = "A Python package to work with data from frequency-resolved X-ray absorption spectroscopy measurements."
+authors = ["Brian Gerwe <brian.s.gerwe@gmail.com>"]
+readme = "README.md"
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.8.1,<3.11"
+lmfit = "^1.1.0"
+matplotlib = "^3.7.0"
+h5py = "^3.8.0"
+scipy = "^1.10.1"
+numpy = "^1.24.2"
+
+
+[tool.poetry.group.development.dependencies]
+pytest = "^7.2.1"
+pytest-cov = "^4.0.0"
+flake8 = "^6.0.0"
+black = {extras = ["jupyter"], version = "^23.1.0"}
+jupyterlab = "^3.6.1"
+
+
+[tool.poetry.group.build.dependencies]
+numpydoc = "^1.5.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

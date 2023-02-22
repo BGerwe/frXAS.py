@@ -4,8 +4,7 @@ import matplotlib.pyplot as plt
 from . import models
 
 
-def plot_chi(axes, x, data, params=None, add_fit=False,
-             model=None, x_units=r'$\mum$', **kwargs):
+def plot_chi(axes, x, data, params=None, add_fit=False, model=None, x_units=r"$\mum$", **kwargs):
     """Plotting Re and Im components of FR-XAS profiles on separate axes.
 
     Parameters
@@ -24,18 +23,18 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
         Plot axes.
 
     """
-    if 'marker' in kwargs.keys():
-        marker = kwargs.pop('marker')
+    if "marker" in kwargs.keys():
+        marker = kwargs.pop("marker")
     else:
-        marker = 'x'
+        marker = "x"
 
-    if 'ls' in kwargs.keys():
-        ls = kwargs.pop('ls')
+    if "ls" in kwargs.keys():
+        ls = kwargs.pop("ls")
     else:
-        ls = '-'
+        ls = "-"
 
-    if 'fontsize' in kwargs.keys():
-        fontsize = kwargs.pop('fontsize')
+    if "fontsize" in kwargs.keys():
+        fontsize = kwargs.pop("fontsize")
     else:
         fontsize = 18
 
@@ -43,7 +42,7 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
         ax_re = axes[0]
         ax_im = axes[1]
     except TypeError:
-        print('Incorrect number of matplotlib.axes passed.')
+        print("Incorrect number of matplotlib.axes passed.")
         raise
 
     if (np.shape(data[0]), np.shape(x[0])) == ((), ()):
@@ -64,24 +63,23 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
 
             if add_fit:
                 fit = models.dataset_fun(params, i, xa, model)
-                ax_re.plot(xa, fit.real, marker='', ls=ls, **kwargs)
-                ax_im.plot(xa, fit.imag, marker='', ls=ls, **kwargs)
+                ax_re.plot(xa, fit.real, marker="", ls=ls, **kwargs)
+                ax_im.plot(xa, fit.imag, marker="", ls=ls, **kwargs)
 
-    ax_re.set_ylabel(r'Re[$\chi$]', fontsize=fontsize)
-    ax_im.set_ylabel(r'Im[$\chi$]', fontsize=fontsize)
+    ax_re.set_ylabel(r"Re[$\chi$]", fontsize=fontsize)
+    ax_im.set_ylabel(r"Im[$\chi$]", fontsize=fontsize)
 
     ax_re.xaxis.set_major_formatter(plt.NullFormatter())
-    ax_im.set_xlabel(r'Distance ($\mu m$)', fontsize=fontsize)
+    ax_im.set_xlabel(r"Distance ($\mu m$)", fontsize=fontsize)
     for ax in axes:
-
         # Make the tick labels larger
-        ax.tick_params(axis='both', which='major', labelsize=14)
+        ax.tick_params(axis="both", which="major", labelsize=14)
 
         # Change the number of labels on each axis to five
-        ax.locator_params(axis='y', nbins=6, tight=True)
+        ax.locator_params(axis="y", nbins=6, tight=True)
 
         # Add a light grid
-        ax.grid(b=True, which='major', axis='both', alpha=.5)
+        ax.grid(which="major", axis="both", alpha=0.5)
 
     y_offset = ax_re.yaxis.get_offset_text()
     y_offset.set_size(18)
@@ -91,8 +89,7 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
     return ax_re, ax_im
 
 
-def plot_chi_mag(ax, x, data, params=None, add_fit=False,
-                 model=None, x_units=r'$\mum$', **kwargs):
+def plot_chi_mag(ax, x, data, params=None, add_fit=False, model=None, x_units=r"$\mum$", **kwargs):
     """Plotting magnitude of FR-XAS profiles.
 
     Parameters
@@ -111,13 +108,13 @@ def plot_chi_mag(ax, x, data, params=None, add_fit=False,
 
     """
     try:
-        marker = kwargs.pop('marker')
+        marker = kwargs.pop("marker")
     except KeyError:
-        marker = 'x'
+        marker = "x"
     try:
-        ls = kwargs.pop('ls')
+        ls = kwargs.pop("ls")
     except KeyError:
-        ls = '-'
+        ls = "-"
 
     fontsize = 18
 
@@ -136,19 +133,19 @@ def plot_chi_mag(ax, x, data, params=None, add_fit=False,
 
             if add_fit:
                 fit = models.dataset_fun(params, i, xa, model)
-                ax.plot(xa, np.abs(fit), marker='', ls=ls, **kwargs)
+                ax.plot(xa, np.abs(fit), marker="", ls=ls, **kwargs)
 
-    ax.set_ylabel(r'||$\chi$||', fontsize=fontsize)
-    ax.set_xlabel(r'Distance ($\mu$m)', fontsize=fontsize)
+    ax.set_ylabel(r"||$\chi$||", fontsize=fontsize)
+    ax.set_xlabel(r"Distance ($\mu$m)", fontsize=fontsize)
 
     # Make the tick labels larger
-    ax.tick_params(axis='both', which='major', labelsize=14)
+    ax.tick_params(axis="both", which="major", labelsize=14)
 
     # Change the number of labels on each axis to five
-    ax.locator_params(axis='y', nbins=6, tight=True)
+    ax.locator_params(axis="y", nbins=6, tight=True)
 
     # Add a light grid
-    ax.grid(b=True, which='major', axis='both', alpha=.5)
+    ax.grid(b=True, which="major", axis="both", alpha=0.5)
 
     y_offset = ax.yaxis.get_offset_text()
     y_offset.set_size(18)
