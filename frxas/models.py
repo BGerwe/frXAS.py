@@ -28,8 +28,8 @@ def dataset_fun(params, i, x, fun):
     args = {}
     for pname in params:
         # find all parameters with suffix for current index
-        if pname.split('_')[-1] == str(i+1):
-            args[pname.split('_')[0]] = params[pname]
+        if pname.split("_")[-1] == str(i + 1):
+            args[pname.split("_")[0]] = params[pname]
 
     return fun(x, **args)
 
@@ -95,8 +95,7 @@ def objective_fun(params, x, data, fun):
 
         # make residual per data set
         for i in range(ndata):
-            resid.append(calc_resid(data[i],
-                                    dataset_fun(params, i, x[i], fun)))
+            resid.append(calc_resid(data[i], dataset_fun(params, i, x[i], fun)))
 
         # change to array so residuals can be flattened as needed by minimize
         resid = np.array(resid, dtype=object)
@@ -277,8 +276,7 @@ def chi_patterned(x, amp=1, gammap=1e-3, ld=15, tg=1, f=1, L=0.6):
     """
     g_p = gammap
     w = 2 * np.pi * f
-    chi = - amp / (1 + g_p * np.sqrt(1 + 1j * tg * w)) \
-        * np.exp(-x / ld * np.sqrt(1 + 1j * tg * w))
+    chi = -amp / (1 + g_p * np.sqrt(1 + 1j * tg * w)) * np.exp(-x / ld * np.sqrt(1 + 1j * tg * w))
     # Note gamma_p = gamma * L / ld
 
     return chi
@@ -320,7 +318,7 @@ def load_fit_report(filename):
         original MinimizerResult object.
 
     """
-    f = open(filename, mode='r')
+    f = open(filename, mode="r")
     lines = f.readlines()
     f.close()
 
@@ -335,44 +333,44 @@ def load_fit_report(filename):
     # Pull out fit statistics values and find positions of "Variables" and
     # "Correlations" sections
     for i, line in enumerate(lines):
-        if '# fitting method' in line:
-            mini.method = line.split('=')[-1][1:].split('\n')[0]
-        if '# function evals' in line:
-            mini.nfev = int(line.split('=')[-1][1:])
-        if '# data points' in line:
-            mini.ndata = int(line.split('=')[-1][1:])
-        if '# variables' in line:
-            mini.nvarys = int(line.split('=')[-1][1:])
-        if 'chi-square' in line and 'chisqr' not in dir(mini):
-            mini.chisqr = float(line.split('=')[-1][1:])
-        if 'reduced chi-square' in line:
-            mini.redchi = float(line.split('=')[-1][1:])
-        if 'Akaike info' in line:
-            mini.aic = float(line.split('=')[-1][1:])
-        if 'Bayesian info' in line:
-            mini.bic = float(line.split('=')[-1][1:])
+        if "# fitting method" in line:
+            mini.method = line.split("=")[-1][1:].split("\n")[0]
+        if "# function evals" in line:
+            mini.nfev = int(line.split("=")[-1][1:])
+        if "# data points" in line:
+            mini.ndata = int(line.split("=")[-1][1:])
+        if "# variables" in line:
+            mini.nvarys = int(line.split("=")[-1][1:])
+        if "chi-square" in line and "chisqr" not in dir(mini):
+            mini.chisqr = float(line.split("=")[-1][1:])
+        if "reduced chi-square" in line:
+            mini.redchi = float(line.split("=")[-1][1:])
+        if "Akaike info" in line:
+            mini.aic = float(line.split("=")[-1][1:])
+        if "Bayesian info" in line:
+            mini.bic = float(line.split("=")[-1][1:])
 
         if line.startswith("[[Variables]]"):
             start_varys = i + 1
         elif line.startswith("[[Correlations]]"):
             end_varys = i
             start_correls = i + 1
-        elif 'end_varys' in locals():
+        elif "end_varys" in locals():
             end_correls = i
         else:
             end_varys = i
 
-    if mini.method in ('leastsq', 'least_squares'):
+    if mini.method in ("leastsq", "least_squares"):
         mini.errorbars = True
 
     varys = lines[start_varys:end_varys]
-    if 'start_correls' in locals():
-        correls = lines[start_correls:end_correls+1]
+    if "start_correls" in locals():
+        correls = lines[start_correls : end_correls + 1]
 
     # Walk through "Variables" section text and reconstruct Parameters
     for line in varys:
-        name_str = re.search(r'[a-zA-Z]+_[0-9]+', line)
-        val_str = re.search(r' -?\d+(\.\d+)?', line)
+        name_str = re.search(r"[a-zA-Z]+_[0-9]+", line)
+        val_str = re.search(r" -?\d+(\.\d+)?", line)
 
         if name_str and val_str:
             name = name_str.group()
@@ -381,15 +379,15 @@ def load_fit_report(filename):
         else:
             continue
 
-        if '(fixed)' in line:
+        if "(fixed)" in line:
             mini.params[name].vary = False
             mini.params[name].stderr = 0
         else:
             mini.params[name].vary = True
 
-            bound_str = re.search(r'\+/- (\d+(\.\d+)?(e-?\d+)?)', line)
-            expr_str = expr_str = re.search(r'== .*', line)
-            init_str = re.search(r'init = -?\d+(\.\d+)?', line)
+            bound_str = re.search(r"\+/- (\d+(\.\d+)?(e-?\d+)?)", line)
+            expr_str = expr_str = re.search(r"== .*", line)
+            init_str = re.search(r"init = -?\d+(\.\d+)?", line)
 
             if bound_str:
                 stderr = float(bound_str.group()[4:])
@@ -405,9 +403,9 @@ def load_fit_report(filename):
     # Unfortunately, they are output with 3 sig figs, which creates ordering
     # issues in the report since they are sorted by correlation magnitude.
     for line in correls:
-        vary1_str = re.search(r'C[(][a-zA-Z]+_[0-9]+', line).group()[2:]
-        vary2_str = re.search(r'[a-zA-Z]+_[0-9]+[)]', line).group()[:-1]
-        correl = float(line.split('=')[-1][1:])
+        vary1_str = re.search(r"C[(][a-zA-Z]+_[0-9]+", line).group()[2:]
+        vary2_str = re.search(r"[a-zA-Z]+_[0-9]+[)]", line).group()[:-1]
+        correl = float(line.split("=")[-1][1:])
 
         if mini.params[vary1_str].correl:
             mini.params[vary1_str].correl[vary2_str] = correl

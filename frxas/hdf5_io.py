@@ -69,8 +69,10 @@ def open_hdf5(filename: str, mode="r+"):
         f = h5py.File(filename + ".h5", mode)
 
     except TypeError:
-        print("Error encountered. Make sure filename is a valid path for an",
-              "existing file.")
+        print(
+            "Error encountered. Make sure filename is a valid path for an",
+            "existing file.",
+        )
         return
 
     return f
@@ -101,8 +103,7 @@ def close_hdf5(filename: str):
     return
 
 
-def add_frxas_profile(file, gas, frequency, positions, data, harmonic=1,
-                      ir_avgs=[]):
+def add_frxas_profile(file, gas, frequency, positions, data, harmonic=1, ir_avgs=[]):
     """Adds data for a single gas and frequency experiment to existing file.
 
     Parameters
@@ -154,7 +155,7 @@ def add_frxas_profile(file, gas, frequency, positions, data, harmonic=1,
 
     """
     if data.shape[-1] != positions.shape[-1]:
-        raise ValueError('Data and position shapes don\'t match')
+        raise ValueError("Data and position shapes don't match")
     # TODO: Add size checking for ir_avgs
     # if (ir_avgs).all() and data.shape[-1] != len(ir_avgs):
     #   raise ValueError('Position and ir_avgs shapes don\'t match')
@@ -162,8 +163,8 @@ def add_frxas_profile(file, gas, frequency, positions, data, harmonic=1,
     f = file
     group = str(gas)
     # frequency is used both to find existing data and to label new data
-    subgroup = str(frequency) + '_Hz'
-    dset = 'Harmonic ' + str(harmonic)
+    subgroup = str(frequency) + "_Hz"
+    dset = "Harmonic " + str(harmonic)
 
     try:
         f.keys()
@@ -183,18 +184,18 @@ def add_frxas_profile(file, gas, frequency, positions, data, harmonic=1,
             f[group][subgroup].create_dataset(dset, data=data)
 
         # Positions will be shared across all harmonics within each frequency
-        f[group][subgroup].attrs['Positions'] = positions
+        f[group][subgroup].attrs["Positions"] = positions
 
         if len(ir_avgs) > 0:
-            f[group][subgroup].attrs['Equilibrium Absorbance'] = ir_avgs
+            f[group][subgroup].attrs["Equilibrium Absorbance"] = ir_avgs
 
         # Not really necessary, but adding exp. conditions as attributes
-        f[group][subgroup].attrs['Frequency'] = frequency
-        f[group][subgroup].attrs['Gas'] = float(gas.split('%')[0]) / 100
-        f[group].attrs['Gas'] = float(gas.split('%')[0]) / 100
+        f[group][subgroup].attrs["Frequency"] = frequency
+        f[group][subgroup].attrs["Gas"] = float(gas.split("%")[0]) / 100
+        f[group].attrs["Gas"] = float(gas.split("%")[0]) / 100
 
     except (KeyError, TypeError):
-        print('Data entry unsuccessful')
+        print("Data entry unsuccessful")
         return
     print(f"Added {dset} to {float(gas.split('%')[0]) / 100}% {frequency} Hz")
 
@@ -223,10 +224,9 @@ def print_data_shapes(file):
         if f[group].keys():
             # Looking through frequencies groups
             for dset in f[group].keys():
-                print(f[group][dset].name,
-                      f[group][dset].attrs.get('Positions').shape)
+                print(f[group][dset].name, f[group][dset].attrs.get("Positions").shape)
         else:
-            print(f[group], ' is empty.')
+            print(f[group], " is empty.")
     return
 
 
@@ -283,7 +283,7 @@ def adjust_dataset(data, positions, start_index):
     """
     pos = positions
     rows, cols = data.shape
-    data_adj = np.zeros((rows, cols-start_index))
+    data_adj = np.zeros((rows, cols - start_index))
     data_adj[:rows, :] = data[:, start_index:].copy()
     # Make positions in first row relative to first value
     pos_adj = pos[start_index:].copy()
@@ -318,30 +318,30 @@ def get_group_datasets(subgroup, harmonic=1, start_index=None):
     else:
         start_adj = True
 
-    frequency = subgroup.attrs['Frequency']
-    pos = subgroup.attrs.get('Positions')
+    frequency = subgroup.attrs["Frequency"]
+    pos = subgroup.attrs.get("Positions")
 
-    if 'Equilibrium Absorbance' in subgroup.attrs.keys():
-        ir_avgs = subgroup.attrs['Equilibrium Absorbance']
+    if "Equilibrium Absorbance" in subgroup.attrs.keys():
+        ir_avgs = subgroup.attrs["Equilibrium Absorbance"]
     else:
         ir_avgs = []
 
     try:
-        dset = subgroup[f'Harmonic {harmonic}']
+        dset = subgroup[f"Harmonic {harmonic}"]
     except KeyError:
-        print(f'Harmonic {harmonic} not found in {subgroup}')
+        print(f"Harmonic {harmonic} not found in {subgroup}")
         return frequency, [], [], [], [], []
 
     # Start indices are used in passed to the function or previously stored
     # with each data set. Otherwise, assume starting at beginning. Makes new
     # array to store truncated data set.
     if start_adj:
-        subgroup.attrs['Start_Index'] = start
+        subgroup.attrs["Start_Index"] = start
         data = np.array(dset)
         data_adj, pos_adj = adjust_dataset(data, pos, start)
     else:
         try:
-            start = subgroup.attrs['Start_Index']
+            start = subgroup.attrs["Start_Index"]
         except KeyError:
             start = 0
 
@@ -390,21 +390,36 @@ def get_all_datasets(file, harmonic=1, start_indices=None):
     for i, key in enumerate(f):
         group = f[key]
         data_dict = {}
-        data_dict['gas'] = group.attrs.get('Gas')
+        data_dict["gas"] = group.attrs.get("Gas")
 
         # Make lists of all info within a gass condition
         frequencies, starts, data, data_adj, ir_avgs = [], [], [], [], []
         posi, posi_adj = [], []
         for j, subgroup in enumerate(group.keys()):
             if group[subgroup].keys() and len(start_indices) > 0:
-                frequency, start, dat, dat_adj, pos, pos_adj, ir_avg = \
-                    get_group_datasets(group[subgroup], harmonic=harmonic,
-                                       start_index=start_indices[i][j])
+                (
+                    frequency,
+                    start,
+                    dat,
+                    dat_adj,
+                    pos,
+                    pos_adj,
+                    ir_avg,
+                ) = get_group_datasets(
+                    group[subgroup], harmonic=harmonic, start_index=start_indices[i][j]
+                )
             elif group[subgroup].keys() and len(start_indices) == 0:
-                frequency, start, dat, dat_adj, pos, pos_adj, ir_avg = \
-                    get_group_datasets(group[subgroup], harmonic=harmonic)
+                (
+                    frequency,
+                    start,
+                    dat,
+                    dat_adj,
+                    pos,
+                    pos_adj,
+                    ir_avg,
+                ) = get_group_datasets(group[subgroup], harmonic=harmonic)
             else:
-                print(group[subgroup], ' is empty.')
+                print(group[subgroup], " is empty.")
                 continue
             frequencies.append(frequency)
             starts.append(start)
@@ -414,21 +429,21 @@ def get_all_datasets(file, harmonic=1, start_indices=None):
             posi_adj.append(pos_adj)
             ir_avgs.append(ir_avg)
 
-        data_dict['frequencies'] = frequencies
-        data_dict['starts'] = starts
-        data_dict['data'] = data
-        data_dict['data_adj'] = data_adj
-        data_dict['positions'] = posi
-        data_dict['positions_adj'] = posi_adj
+        data_dict["frequencies"] = frequencies
+        data_dict["starts"] = starts
+        data_dict["data"] = data
+        data_dict["data_adj"] = data_adj
+        data_dict["positions"] = posi
+        data_dict["positions_adj"] = posi_adj
         if len(ir_avgs) > 0:
-            data_dict['ir_avgs'] = ir_avgs
+            data_dict["ir_avgs"] = ir_avgs
         data_list.append(data_dict)
 
     f.close()
     return data_list
 
 
-def unpack_data(data_dict, kind='adj'):
+def unpack_data(data_dict, kind="adj"):
     """Extracts FR-XAS profiles from hdf5 file.
 
     Parameters
@@ -457,27 +472,29 @@ def unpack_data(data_dict, kind='adj'):
     """
     xs, data, ir_avgs, freqs, gas, sizes = [], [], [], [], [], []
 
-    if kind == 'adj':
-        kind = '_adj'
-    elif kind == 'raw':
-        kind = ''
+    if kind == "adj":
+        kind = "_adj"
+    elif kind == "raw":
+        kind = ""
     else:
-        raise ValueError(f"Invalid `kind` selection. Valid choices are \'adj\' \
-                         or \'raw\', but {kind} was provided.")
+        raise ValueError(
+            f"Invalid `kind` selection. Valid choices are 'adj' \
+                         or 'raw', but {kind} was provided."
+        )
 
     # Iterate through each hdf5 group (corresponding to gas condition)
     for group in data_dict:
         x, dat, ir_avg = [], [], []
-        x = group[f'positions{kind}']
-        frequencies = group['frequencies']
+        x = group[f"positions{kind}"]
+        frequencies = group["frequencies"]
         # Unpack list of arrays of complex coefficients for each hdf5 subgroup
         # (corresponding to frequency measured)
-        for dset in group[f'data{kind}']:
+        for dset in group[f"data{kind}"]:
             dat.append(np.array(dset[0] + 1j * dset[1]))
-            gas.append(group['gas'])
+            gas.append(group["gas"])
 
         # Unpack list of arrays of equilibrium absorbances
-        for dset in group['ir_avgs']:
+        for dset in group["ir_avgs"]:
             ir_avg.append(dset)
 
         # Adding individual data sets to list, sorted by frequency
@@ -518,29 +535,29 @@ def save_lmfit_fit_statistics(hdf_file, fit_model):
 
     # Adding these parts as attributes seems easier than making into a dataset
     fit_stats = f["Fit Statistics"]
-    fit_stats.attrs['Fitting Method'] = fit_model.method
-    fit_stats.attrs['Function Evals'] = fit_model.nfev
-    fit_stats.attrs['Data Points'] = fit_model.ndata
-    fit_stats.attrs['Number of Variables'] = fit_model.nvarys
-    fit_stats.attrs['Chi Squared'] = fit_model.chisqr
-    fit_stats.attrs['Reduced Chi Squared'] = fit_model.redchi
-    fit_stats.attrs['Akaike Info Criteria'] = fit_model.aic
-    fit_stats.attrs['Bayesian Info Criteria'] = fit_model.bic
+    fit_stats.attrs["Fitting Method"] = fit_model.method
+    fit_stats.attrs["Function Evals"] = fit_model.nfev
+    fit_stats.attrs["Data Points"] = fit_model.ndata
+    fit_stats.attrs["Number of Variables"] = fit_model.nvarys
+    fit_stats.attrs["Chi Squared"] = fit_model.chisqr
+    fit_stats.attrs["Reduced Chi Squared"] = fit_model.redchi
+    fit_stats.attrs["Akaike Info Criteria"] = fit_model.aic
+    fit_stats.attrs["Bayesian Info Criteria"] = fit_model.bic
 
     # Kind of clunky way to get lmfit model info out, but it works for now
     mod_str = str(fit_model.model).split(": ")[-1][:-1]
-    mod_comps = mod_str.split('Model(')
+    mod_comps = mod_str.split("Model(")
     fcns, prefixes = [], []
     for mod in mod_comps[1:]:
         fcn = mod.split(",")[0]
-        match = re.search(r'h\d+_', mod)
+        match = re.search(r"h\d+_", mod)
         if match:
             prefix = match.group()
         fcns.append(fcn)
         prefixes.append(prefix)
 
-    fit_stats.attrs['Model Functions'] = fcns
-    fit_stats.attrs['Model Prefixes'] = prefixes
+    fit_stats.attrs["Model Functions"] = fcns
+    fit_stats.attrs["Model Prefixes"] = prefixes
     return
 
 
@@ -564,7 +581,7 @@ def save_lmfit_ind_varis(hdf_file, fit_model):
 
     # Store independent variables: frequencies, freq_in, window_param
     # Using datasets since frequencies will be too large for storing as attr
-    ind_varis = f['Independent Variables']
+    ind_varis = f["Independent Variables"]
     for kw in fit_model.userkws:
         try:
             if kw in ind_varis.keys():
@@ -573,8 +590,7 @@ def save_lmfit_ind_varis(hdf_file, fit_model):
             else:
                 ind_varis.create_dataset(kw, data=fit_model.userkws[kw])
         except (KeyError, RuntimeError):
-            print(f'Data entry for {kw} was unsuccessful. Check data',
-                  f'type of {kw}')
+            print(f"Data entry for {kw} was unsuccessful. Check data", f"type of {kw}")
     return
 
 
@@ -596,39 +612,57 @@ def save_lmfit_varis(hdf_file, fit_model, save_data):
     except ValueError:
         pass
     # Store variables AKA parameters from lmfit model
-    varis = f['Variables']
+    varis = f["Variables"]
 
     param_info = np.zeros((len(fit_model.params), 6))
     param_names = []
     for i, kw in enumerate(fit_model.params.keys()):
         param_names.append(kw)
-        param = np.array([fit_model.params[kw].value, fit_model.params[kw].min,
-                         fit_model.params[kw].max, fit_model.params[kw].vary,
-                         fit_model.params[kw].stderr,
-                         fit_model.params[kw].init_value])
+        param = np.array(
+            [
+                fit_model.params[kw].value,
+                fit_model.params[kw].min,
+                fit_model.params[kw].max,
+                fit_model.params[kw].vary,
+                fit_model.params[kw].stderr,
+                fit_model.params[kw].init_value,
+            ]
+        )
         param_info[i, :] = param
 
     # Store names as attribute because HDF doesn't play nice with arrays
     # of strings
-    varis.attrs['Parameter Names'] = param_names
+    varis.attrs["Parameter Names"] = param_names
     try:
-        if 'Parameter Info' in varis.keys():
-            del varis['Parameter Info']
-            varis.create_dataset('Parameter Info', data=np.array(param_info))
-            varis['Parameter Info'].attrs['Values Order'] = \
-                ['Value', 'Min', 'Max', 'Varies', 'Std Err', 'Initial Value']
+        if "Parameter Info" in varis.keys():
+            del varis["Parameter Info"]
+            varis.create_dataset("Parameter Info", data=np.array(param_info))
+            varis["Parameter Info"].attrs["Values Order"] = [
+                "Value",
+                "Min",
+                "Max",
+                "Varies",
+                "Std Err",
+                "Initial Value",
+            ]
         else:
-            varis.create_dataset('Parameter Info', data=np.array(param_info))
-            varis['Parameter Info'].attrs['Values Order'] = \
-                ['Value', 'Min', 'Max', 'Varies', 'Std Err', 'Initial Value']
+            varis.create_dataset("Parameter Info", data=np.array(param_info))
+            varis["Parameter Info"].attrs["Values Order"] = [
+                "Value",
+                "Min",
+                "Max",
+                "Varies",
+                "Std Err",
+                "Initial Value",
+            ]
         if save_data:
-            if 'Data' in varis.keys():
-                del varis['Data']
-                varis.create_dataset('Data', data=fit_model.data)
+            if "Data" in varis.keys():
+                del varis["Data"]
+                varis.create_dataset("Data", data=fit_model.data)
             else:
-                varis.create_dataset('Data', data=fit_model.data)
+                varis.create_dataset("Data", data=fit_model.data)
     except (KeyError, RuntimeError):
-        print('Parameter names and value entry unsuccessful.')
+        print("Parameter names and value entry unsuccessful.")
 
     return
 
@@ -675,35 +709,37 @@ def load_lmfit_fit_statistics(hdf_file):
     """
     f = hdf_file
 
-    fit_stats = f['Fit Statistics']
-    fcns = fit_stats.attrs.get('Model Functions')
-    prefixes = fit_stats.attrs.get('Model Prefixes')
+    fit_stats = f["Fit Statistics"]
+    fcns = fit_stats.attrs.get("Model Functions")
+    prefixes = fit_stats.attrs.get("Model Prefixes")
 
     model_form = None
     for fcn, prefix in zip(fcns, prefixes):
         if model_form:
-            model_form += \
-                lmfit.Model(getattr(time_domain, fcn), prefix=prefix,
-                            independent_vars=['frequencies', 'freq_in',
-                                              'window_param'])
+            model_form += lmfit.Model(
+                getattr(time_domain, fcn),
+                prefix=prefix,
+                independent_vars=["frequencies", "freq_in", "window_param"],
+            )
         else:
-            model_form = \
-                lmfit.Model(getattr(time_domain, fcn), prefix=prefix,
-                            independent_vars=['frequencies', 'freq_in',
-                                              'window_param'])
+            model_form = lmfit.Model(
+                getattr(time_domain, fcn),
+                prefix=prefix,
+                independent_vars=["frequencies", "freq_in", "window_param"],
+            )
 
     # Initialize `ModelResult` class with empty parameters
     params = lmfit.Parameters()
     fit_model = lmfit.model.ModelResult(model_form, params)
     # Load in fit statistics
-    fit_model.method = fit_stats.attrs['Fitting Method']
-    fit_model.nfev = fit_stats.attrs['Function Evals']
-    fit_model.ndata = fit_stats.attrs['Data Points']
-    fit_model.nvarys = fit_stats.attrs['Number of Variables']
-    fit_model.chisqr = fit_stats.attrs['Chi Squared']
-    fit_model.redchi = fit_stats.attrs['Reduced Chi Squared']
-    fit_model.aic = fit_stats.attrs['Akaike Info Criteria']
-    fit_model.bic = fit_stats.attrs['Bayesian Info Criteria']
+    fit_model.method = fit_stats.attrs["Fitting Method"]
+    fit_model.nfev = fit_stats.attrs["Function Evals"]
+    fit_model.ndata = fit_stats.attrs["Data Points"]
+    fit_model.nvarys = fit_stats.attrs["Number of Variables"]
+    fit_model.chisqr = fit_stats.attrs["Chi Squared"]
+    fit_model.redchi = fit_stats.attrs["Reduced Chi Squared"]
+    fit_model.aic = fit_stats.attrs["Akaike Info Criteria"]
+    fit_model.bic = fit_stats.attrs["Bayesian Info Criteria"]
 
     return fit_model
 
@@ -723,7 +759,7 @@ def load_lmfit_ind_varis(hdf_file, fit_model):
     f = hdf_file
     # Load in independent variables
     ind_varis = {}
-    for name, val in f['Independent Variables'].items():
+    for name, val in f["Independent Variables"].items():
         ind_varis[name] = np.array(val)
     fit_model.userkws = ind_varis
 
@@ -745,9 +781,8 @@ def load_lmfit_varis(hdf_file, fit_model):
     # Load in parameters
     f = hdf_file
     params = lmfit.Parameters()
-    varis = f['Variables']
-    for name, info in zip(varis.attrs['Parameter Names'],
-                          varis['Parameter Info']):
+    varis = f["Variables"]
+    for name, info in zip(varis.attrs["Parameter Names"], varis["Parameter Info"]):
         params.add(name, value=info[0], min=info[1], max=info[2], vary=info[3])
         # For compatibility with previous version of saving lmfit
         if len(info) == 6:
@@ -759,8 +794,8 @@ def load_lmfit_varis(hdf_file, fit_model):
                 fit_model.errorbars = True
 
     fit_model.params = params
-    if 'Data' in varis.keys():
-        fit_model.data = np.array(varis['Data'])
+    if "Data" in varis.keys():
+        fit_model.data = np.array(varis["Data"])
 
     return
 
@@ -815,23 +850,23 @@ def extract_time_domain_fit(file, suffix, harmonics=1, fit_dict=None):
     if not fit_dict:
         fit_dict = {}
 
-    if 'positions' in fit_dict.keys():
-        fit_dict['positions'][suffix] = float(file.userkws['position'])
+    if "positions" in fit_dict.keys():
+        fit_dict["positions"][suffix] = float(file.userkws["position"])
     else:
-        fit_dict['positions'] = {suffix: float(file.userkws['position'])}
+        fit_dict["positions"] = {suffix: float(file.userkws["position"])}
 
-    if 'ir_avg' in fit_dict.keys():
-        fit_dict['ir_avg'][suffix] = float(file.userkws['ir_avg'])
+    if "ir_avg" in fit_dict.keys():
+        fit_dict["ir_avg"][suffix] = float(file.userkws["ir_avg"])
     else:
-        fit_dict['ir_avg'] = {suffix: float(file.userkws['ir_avg'])}
+        fit_dict["ir_avg"] = {suffix: float(file.userkws["ir_avg"])}
 
-    for k in range(1, harmonics+1):
-        if f'h{k}_re' in fit_dict.keys():
-            fit_dict[f'h{k}_re'][suffix] = file.params[f'h{k}_re_comp'].value
-            fit_dict[f'h{k}_im'][suffix] = file.params[f'h{k}_im_comp'].value
+    for k in range(1, harmonics + 1):
+        if f"h{k}_re" in fit_dict.keys():
+            fit_dict[f"h{k}_re"][suffix] = file.params[f"h{k}_re_comp"].value
+            fit_dict[f"h{k}_im"][suffix] = file.params[f"h{k}_im_comp"].value
         else:
-            fit_dict[f'h{k}_re'] = {suffix: file.params[f'h{k}_re_comp'].value}
-            fit_dict[f'h{k}_im'] = {suffix: file.params[f'h{k}_im_comp'].value}
+            fit_dict[f"h{k}_re"] = {suffix: file.params[f"h{k}_re_comp"].value}
+            fit_dict[f"h{k}_im"] = {suffix: file.params[f"h{k}_im_comp"].value}
 
     return fit_dict
 
@@ -859,18 +894,18 @@ def extract_DC_profile(neg_df, harmonics=1, pos_df=None):
         # data to neg_df
         z_match = (neg_df.z == pos_df.z).all()
         assert z_match
-        neg_df['ocv_pos'] = pos_df.ocv
-        neg_df['bias_pos'] = pos_df.bias
+        neg_df["ocv_pos"] = pos_df.ocv
+        neg_df["bias_pos"] = pos_df.bias
     except AttributeError:
         z_match = False
         pass
 
     dc_dict = {}
     for i, row in neg_df.iterrows():
-        if 'positions' in dc_dict.keys():
-            dc_dict['positions'][f'{i}'] = row.z
+        if "positions" in dc_dict.keys():
+            dc_dict["positions"][f"{i}"] = row.z
         else:
-            dc_dict['positions'] = {f'{i}': row.z}
+            dc_dict["positions"] = {f"{i}": row.z}
 
         # Absorbance average in FR-XAS data should be analogous to ocv in
         # DC data. When positive bias data is provided, take average.
@@ -879,10 +914,10 @@ def extract_DC_profile(neg_df, harmonics=1, pos_df=None):
         else:
             ocv_val = row.ocv
 
-        if 'ir_avg' in dc_dict.keys():
-            dc_dict['ir_avg'][f'{i}'] = ocv_val
+        if "ir_avg" in dc_dict.keys():
+            dc_dict["ir_avg"][f"{i}"] = ocv_val
         else:
-            dc_dict['ir_avg'] = {f'{i}': ocv_val}
+            dc_dict["ir_avg"] = {f"{i}": ocv_val}
 
         # For better comparison to oscillatory data, we take mean of difference
         # between negative and positive bias, if positive data is given.
@@ -893,21 +928,21 @@ def extract_DC_profile(neg_df, harmonics=1, pos_df=None):
         else:
             val = (row.bias - row.ocv) / row.ocv
 
-        if 'h1_re' in dc_dict.keys():
-            dc_dict['h1_re'][f'{i}'] = val
-            dc_dict['h1_im'][f'{i}'] = 0
+        if "h1_re" in dc_dict.keys():
+            dc_dict["h1_re"][f"{i}"] = val
+            dc_dict["h1_im"][f"{i}"] = 0
         else:
-            dc_dict['h1_re'] = {f'{i}': val}
-            dc_dict['h1_im'] = {f'{i}': 0}
+            dc_dict["h1_re"] = {f"{i}": val}
+            dc_dict["h1_im"] = {f"{i}": 0}
 
         # DC data is nonlinear, but obviously there are not harmonics.
-        for k in range(2, harmonics+1):
-            if f'h{k}_re' in dc_dict.keys():
-                dc_dict[f'h{k}_re'][f'{i}'] = 0
-                dc_dict[f'h{k}_im'][f'{i}'] = 0
+        for k in range(2, harmonics + 1):
+            if f"h{k}_re" in dc_dict.keys():
+                dc_dict[f"h{k}_re"][f"{i}"] = 0
+                dc_dict[f"h{k}_im"][f"{i}"] = 0
             else:
-                dc_dict[f'h{k}_re'] = {f'{i}': 0}
-                dc_dict[f'h{k}_im'] = {f'{i}': 0}
+                dc_dict[f"h{k}_re"] = {f"{i}": 0}
+                dc_dict[f"h{k}_im"] = {f"{i}": 0}
 
     return dc_dict
 
