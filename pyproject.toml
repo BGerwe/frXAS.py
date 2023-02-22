@@ -32,7 +32,7 @@ line-length = 99
 
 [tool.poetry]
 name = "frxas"
-version = "0.1.0"
+version = "0.1.1"
 description = "A Python package to work with data from frequency-resolved X-ray absorption spectroscopy measurements."
 authors = ["Brian Gerwe <brian.s.gerwe@gmail.com>"]
 readme = "README.md"
