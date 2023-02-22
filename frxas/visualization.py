@@ -81,7 +81,7 @@ def plot_chi(axes, x, data, params=None, add_fit=False,
         ax.locator_params(axis='y', nbins=6, tight=True)
 
         # Add a light grid
-        ax.grid(b=True, which='major', axis='both', alpha=.5)
+        ax.grid(which='major', axis='both', alpha=.5)
 
     y_offset = ax_re.yaxis.get_offset_text()
     y_offset.set_size(18)
