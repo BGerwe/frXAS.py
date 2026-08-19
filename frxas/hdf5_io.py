@@ -477,10 +477,8 @@ def unpack_data(data_dict, kind="adj"):
     elif kind == "raw":
         kind = ""
     else:
-        raise ValueError(
-            f"Invalid `kind` selection. Valid choices are 'adj' \
-                         or 'raw', but {kind} was provided."
-        )
+        raise ValueError(f"Invalid `kind` selection. Valid choices are 'adj' \
+                         or 'raw', but {kind} was provided.")
 
     # Iterate through each hdf5 group (corresponding to gas condition)
     for group in data_dict:
